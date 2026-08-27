@@ -3,7 +3,7 @@
    question is answered fresh within the active context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.10';
+const APP_VERSION = '2.0.11';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
@@ -25,6 +25,31 @@ function displayModel(model) {
       ? tok.toUpperCase()
       : tok.charAt(0).toUpperCase() + tok.slice(1).toLowerCase()
   ).join(' ');
+}
+
+/** Display-only tidy-up of a stored question: capitalise the first letter so a
+    hurried lower-case entry does not look inconsistent in the list. The question text
+    is otherwise untouched - never rewritten, summarised or re-punctuated. */
+function displayQuestion(question) {
+  const q = String(question || '');
+  return q.charAt(0).toUpperCase() + q.slice(1);
+}
+
+/** The history control appears only once judging information is established, and only
+    when the car actually has questions. */
+function historyVisible(established, count) {
+  return Boolean(established) && count > 0;
+}
+
+/** Year accepts digits only, four at most. */
+function sanitiseYear(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 4);
+}
+
+/** Once four digits are in, move on to Model. This advances focus only - it never
+    establishes the judging information, which stays an explicit Set. */
+function shouldAdvanceFromYear(value) {
+  return sanitiseYear(value).length === 4;
 }
 
 /** History belongs to a car, identified by year and model. Judging area and class are
@@ -136,11 +161,11 @@ function paintHistory() {
     area.className = 'history__area';
     area.textContent = entry.category === 'Engine and Chassis' ? 'Engine & Chassis' : entry.category;
     li.appendChild(area);
-    li.append(' \u00b7 ' + entry.question);     // text node: never rendered as HTML
+    li.append(' \u00b7 ' + displayQuestion(entry.question));   // text node, never HTML
     list.appendChild(li);
   });
   text($('historySummary'), 'Questions for this car (' + state.history.length + ')');
-  show($('history'), state.history.length > 0);
+  show($('history'), historyVisible(state.established, state.history.length));
 }
 
 function recordQuestion(question) {
@@ -164,6 +189,7 @@ function openSetup() {
   paintChips();
   show($('contextBar'), false);
   show($('setup'), true);
+  paintHistory();                               // hidden again until Set
   paintLock();
 }
 
@@ -195,6 +221,7 @@ function establish() {
   // A different car yields an empty list; the same car keeps its questions across a
   // judging-area or class change.
   state.history = readHistory(carIdentity(state.car), window.sessionStorage);
+  $('history').open = false;                    // collapsed by default after Set
   paintHistory();
 
   paintContext();
@@ -203,6 +230,13 @@ function establish() {
   paintLock();
   $('question').focus();
 }
+
+$('carYear').addEventListener('input', () => {
+  const el = $('carYear');
+  const cleaned = sanitiseYear(el.value);
+  if (el.value !== cleaned) el.value = cleaned;
+  if (shouldAdvanceFromYear(cleaned)) $('carModel').focus();
+});
 
 $('setContext').addEventListener('click', establish);
 $('changeContext').addEventListener('click', openSetup);

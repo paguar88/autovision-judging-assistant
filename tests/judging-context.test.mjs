@@ -280,5 +280,46 @@ check('Set is visually dominant over Clear',
 check('the two controls are separated', /\.setup__actions \{ display: flex; align-items: center; gap: 18px/.test(css), true);
 check('history is collapsed by default', /<details id="history"/.test(html) && !/<details id="history"[^>]*open/.test(html), true);
 
+
+/* ---- v2.0.11: history gating, question display, year entry ---- */
+const P = new Function(`${src('displayQuestion')}; ${src('historyVisible')}; ${src('sanitiseYear')}; ${src('shouldAdvanceFromYear')};
+  return { displayQuestion, historyVisible, sanitiseYear, shouldAdvanceFromYear };`)();
+
+// Year field
+check('Year has no number spinner in the markup', /id="carYear"[^>]*type="number"/.test(html), false);
+check('Year suppresses UA spinner controls in CSS',
+  /-webkit-inner-spin-button/.test(css) && /appearance: textfield/.test(css), true);
+check('Year requests a numeric mobile keyboard', /id="carYear"[\s\S]{0,140}inputmode="numeric"/.test(html), true);
+check('Year is capped at four characters in the markup', /id="carYear"[\s\S]{0,140}maxlength="4"/.test(html), true);
+check('Year accepts digits only', P.sanitiseYear('1a9b6c7d'), '1967');
+check('Year accepts at most four digits', P.sanitiseYear('196789'), '1967');
+check('four digits advance focus to Model', P.shouldAdvanceFromYear('1967'), true);
+check('three digits do not advance focus', P.shouldAdvanceFromYear('196'), false);
+check('advancing focus targets Model and does not Set',
+  /shouldAdvanceFromYear\(cleaned\)\) \$\('carModel'\)\.focus\(\)/.test(appjs)
+  && !/shouldAdvanceFromYear[\s\S]{0,120}establish\(\)/.test(appjs), true);
+
+// History visibility
+check('history is hidden before Set', P.historyVisible(false, 3), false);
+check('history is hidden with zero questions', P.historyVisible(true, 0), false);
+check('history appears once established and non-empty', P.historyVisible(true, 1), true);
+check('reopening the setup panel hides history again',
+  /function openSetup\(\)[\s\S]*?paintHistory\(\)/.test(appjs), true);
+check('history is collapsed in the markup', /<details id="history"[^>]*open/.test(html), false);
+check('history is re-collapsed on each Set', /\$\('history'\)\.open = false/.test(appjs), true);
+
+// History content
+check('each history item keeps its judging area', /area\.textContent = entry\.category/.test(appjs), true);
+check('Engine and Chassis is shown with an ampersand',
+  /entry\.category === 'Engine and Chassis' \? 'Engine & Chassis'/.test(appjs), true);
+check('a lower-case question displays capitalised',
+  P.displayQuestion('are the knock-off spinners allowed?'), 'Are the knock-off spinners allowed?');
+check('wording is otherwise untouched',
+  P.displayQuestion('Is this air cleaner correct?'), 'Is this air cleaner correct?');
+check('an already-capitalised question is unchanged',
+  P.displayQuestion('Are these wheels correct?'), 'Are these wheels correct?');
+check('the stored question is the raw text, not the display form',
+  /\{ question, category: state\.category \}/.test(appjs), true);
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

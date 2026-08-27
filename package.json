@@ -14,7 +14,9 @@
     "test:citations": "node tests/citation-chain.test.mjs",
     "retrieval:test": "node scripts/retrieval-test.mjs",
     "report": "node scripts/milestone-report.mjs",
-    "verify": "node scripts/verify-vector-store.mjs --brand ferrari"
+    "verify": "node scripts/verify-vector-store.mjs --brand ferrari",
+    "test:stage2": "node tests/stage2.test.mjs",
+    "test": "node tests/citation-chain.test.mjs && node tests/stage2.test.mjs"
   },
   "keywords": [],
   "author": "",

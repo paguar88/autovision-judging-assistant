@@ -1,0 +1,56 @@
+# Concours Judging Assistant - Netlify configuration (Addendum A.3, A.4, A.7)
+
+[build]
+  publish = "public"
+  # Stage 1 artifacts are generated, not committed. Ingestion is deterministic, so the
+  # build reproduces the accepted corpus exactly from approved-source-docs/.
+  command = "npm run ingest"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+  # Every function needs the manifest, page map and unit index for citation work.
+  included_files = ["build/ferrari/*.json", "config/*.json"]
+
+[functions.source]
+  # Only the source viewer needs the page slices (A.7 protected delivery).
+  included_files = [
+    "build/ferrari/*.json",
+    "config/*.json",
+    "build/ferrari/page-slices/**"
+  ]
+
+[[redirects]]
+  from = "/api/auth"
+  to = "/.netlify/functions/auth"
+  status = 200
+
+[[redirects]]
+  from = "/api/ask"
+  to = "/.netlify/functions/ask"
+  status = 200
+
+[[redirects]]
+  from = "/api/sources"
+  to = "/.netlify/functions/sources"
+  status = 200
+
+[[redirects]]
+  from = "/source/:documentId/page/:page"
+  to = "/.netlify/functions/source?document_id=:documentId&page=:page"
+  status = 200
+
+[[redirects]]
+  from = "/source/:documentId"
+  to = "/.netlify/functions/source?document_id=:documentId"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "no-referrer"

@@ -73,13 +73,21 @@ const main = async () => {
 
   const existing = await listStoreFiles();
   const existingByUnit = new Map();
+  const staleByUnit = new Map();
   for (const f of existing) {
     const uid = f.attributes?.unit_id;
-    if (uid) existingByUnit.set(uid, f);
+    if (!uid) continue;
+    // A file that ended in `failed` or `cancelled` is attached but NOT searchable.
+    // Treating it as present would make the gap permanently unrepairable, because
+    // every re-run would skip it. Mark it stale so it is replaced.
+    if (f.status === 'failed' || f.status === 'cancelled') staleByUnit.set(uid, f);
+    else existingByUnit.set(uid, f);
   }
-  console.log(`Existing files in store: ${existing.length} (${existingByUnit.size} carry a unit_id)`);
+  const statusCounts = existing.reduce((a, f) => ({ ...a, [f.status]: (a[f.status] || 0) + 1 }), {});
+  console.log(`Existing files in store: ${existing.length} ${JSON.stringify(statusCounts)}`);
+  console.log(`  usable: ${existingByUnit.size} | stale (failed/cancelled, will be replaced): ${staleByUnit.size}`);
 
-  let uploaded = 0, skipped = 0, failed = 0, pruned = 0;
+  let uploaded = 0, skipped = 0, failed = 0, pruned = 0, replaced = 0;
   const failures = [];
 
   for (const u of units) {
@@ -88,6 +96,10 @@ const main = async () => {
     if (DRY) { uploaded++; continue; }
 
     try {
+      // Remove a previously failed attachment for this unit before replacing it.
+      const stale = staleByUnit.get(u.unit_id);
+      if (stale) { await api('DELETE', `/vector_stores/${STORE}/files/${stale.id}`); replaced++; }
+
       const filePath = path.join(B, 'retrieval-units', u.unit_file);
       const fd = new FormData();
       fd.append('purpose', 'assistants');
@@ -136,8 +148,9 @@ const main = async () => {
     dry_run: DRY,
     vector_store_id: STORE,
     units_in_build: units.length,
-    uploaded, skipped_already_present: skipped, failed, pruned,
+    uploaded, skipped_already_present: skipped, failed, pruned, replaced_stale: replaced,
     store_total_after: (await listStoreFiles()).length,
+    note: 'store_total_after counts attached rows. Attachment is asynchronous, so a row may still be processing or may have failed. Run scripts/verify-vector-store.mjs for searchable counts.',
     failures: failures.slice(0, 10),
   };
   writeFileSync(path.join(B, 'upload-result.json'), JSON.stringify(result, null, 2));

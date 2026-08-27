@@ -104,6 +104,55 @@ console.log('\n=== CITATION CHAIN MACHINERY TEST ===\n');
     ['knockoff', 'borrani', 'campagnolo'].every(t => p59.includes(t)), true);
 }
 
+// 7b. LIVE-SHAPE CASES. File search returns the whole chunk, not a hand-picked
+//     fragment. For page-level units the chunk is the entire unit file: ingestion's
+//     header, the labelled overlap block, then the page text. These cases reproduce
+//     the live payload exactly and are the regression that was missing.
+{
+  const unitFile = (u) => readFileSync(path.join(B, 'retrieval-units', u.unit_file), 'utf8');
+
+  const withOverlap = unitOf('ferrari-330-gtc-gts-as-built:p59');
+  const c1 = cite(withOverlap.unit_id, unitFile(withOverlap));
+  check('whole unit file (with overlap block) -> page 59, verified',
+    [c1.page_number, c1.page_verified, c1.resolution],
+    [59, true, RESOLUTION.PRIMARY]);
+  check('overlap presence is disclosed, not hidden', c1.also_contains_page, 58);
+
+  const noOverlap = unitOf('ferrari-330-gtc-gts-checklist:p1');
+  const c2 = cite(noOverlap.unit_id, unitFile(noOverlap));
+  check('whole unit file (no overlap block) -> page 1, verified',
+    [c2.page_number, c2.page_verified, c2.resolution],
+    [1, true, RESOLUTION.PRIMARY]);
+
+  // A chunk truncated to the overlap block alone still cites the ORIGIN page.
+  const overlapOnlyChunk = `[continues from page 58]\n${withOverlap.overlap_span}`;
+  const c3 = cite(withOverlap.unit_id, overlapOnlyChunk);
+  check('chunk containing only the overlap block -> page 58, not 59',
+    [c3.page_number, c3.resolution], [58, RESOLUTION.OVERLAP]);
+
+  // If only the PAGE text is mutated but the overlap block survives verbatim, the
+  // one span genuinely present is the previous page's - so page 58 is the correct
+  // citation, not a suppression.
+  const primaryMutated = unitFile(withOverlap).replace(/wheel/gi, 'rim').replace(/knockoff/gi, 'spinner');
+  const c4 = cite(withOverlap.unit_id, primaryMutated);
+  check('page text mutated, overlap intact -> cites page 58 (the span actually present)',
+    [c4.page_number, c4.resolution], [58, RESOLUTION.OVERLAP]);
+
+  // Integrity floor: when NEITHER span survives verbatim, the page must be suppressed.
+  const bothMutated = primaryMutated.replace(/washer/gi, 'grommet').replace(/Lobo/g, 'Acme');
+  const c5 = cite(withOverlap.unit_id, bothMutated);
+  check('no span present verbatim -> page suppressed, document retained',
+    [c5.page_number, c5.page_verified, c5.document_id],
+    [null, false, 'ferrari-330-gtc-gts-as-built']);
+
+  // Every one of the 155 units must resolve from its own uploaded file.
+  const unresolved = units.filter(u => {
+    const r = cite(u.unit_id, unitFile(u));
+    return !(r.page_verified && r.page_number === u.page_number);
+  });
+  check('all 155 units resolve to their own page from their own uploaded file', unresolved.length, 0);
+}
+
 // 8. Every unit's declared page exists in its document and has a slice.
 {
   const broken = units.filter(u => {

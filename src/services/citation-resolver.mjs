@@ -48,6 +48,34 @@ export function resolveCitation(unit, excerpt) {
     // if the overlap span uniquely contains it; otherwise suppress.
     return { page_number: null, resolution: RESOLUTION.SPANNING, page_verified: false };
   }
+
+  // The tests above assume the excerpt is a FRAGMENT of a page. File search returns a
+  // whole chunk, which for page-level units is the entire unit file: ingestion's header
+  // block, then the labelled overlap block, then the page text. That is larger than the
+  // page text and so is contained in neither span, which previously fell through to
+  // SUPPRESSED_SPANNING and suppressed every live citation.
+  //
+  // Containment is therefore also tested in the other direction. This does not weaken
+  // verification - it is the same exact substring test, and still requires the page's
+  // own text to be present verbatim in what retrieval returned. No page is guessed.
+  const containsPrimary = primary.length > 0 && needle.includes(primary);
+  const containsOverlap = overlap.length > 0 && needle.includes(overlap);
+
+  if (containsPrimary) {
+    // The unit's complete page text was retrieved. Cite that page. If the labelled
+    // overlap block came along too, surface it rather than hiding it - the previous
+    // page's text is retrievable in its own unit and will cite itself there.
+    return {
+      page_number: unit.page_number,
+      resolution: RESOLUTION.PRIMARY,
+      page_verified: true,
+      also_contains_page: containsOverlap ? unit.overlap_origin_page : null,
+    };
+  }
+  if (containsOverlap) {
+    return { page_number: unit.overlap_origin_page, resolution: RESOLUTION.OVERLAP, page_verified: true };
+  }
+
   // Spans the boundary or is not present verbatim (e.g. the model paraphrased).
   return { page_number: null, resolution: RESOLUTION.SPANNING, page_verified: false };
 }
@@ -76,6 +104,7 @@ export function buildCitation({ unit, excerpt, manifestDoc, sliceExists }) {
     document_version: unit.document_version,
     section_title: unit.section_heading || null,
     page_number: allMet ? r.page_number : null,
+    also_contains_page: r.also_contains_page ?? null,
     page_verified: allMet,
     resolution: r.resolution,
     criteria,

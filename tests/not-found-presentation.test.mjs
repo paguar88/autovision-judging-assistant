@@ -167,5 +167,72 @@ const noSource = await askLive({ question: 'What is the correct wiring loom tape
 check('NO_SOURCE shows no affirmative citations', noSource.sources, []);
 check('NO_SOURCE shows at most two reviewed sources', noSource.sources_reviewed.length, 2);
 
+
+/* ---------- v2.0.13: the LIVE steering-wheel case ----------
+   The model reported INSUFFICIENT_INFO, which the v2.0.12 gate never considered for
+   override, so the negative answer kept a context-missing heading and all five pages
+   rendered as ordinary citations. */
+const LIVE_PROSE = 'The provided sources do not contain specific information about the correct steering wheel for the 1967 Ferrari 330 GTC, such as brand, material, color, design, or distinguishing features.';
+stub(REVIEWED_FIVE, {
+  status: 'INSUFFICIENT_INFO',
+  answer: LIVE_PROSE,
+  correct_specification: null, reason: null, supporting_quote: null, conflict_note: null,
+});
+const liveWheel = await askLive({
+  question: 'What is the correct steering wheel for a 1967 Ferrari 330 GTC?',
+  judging_category: 'Interior', car: CAR,
+});
+check('INSUFFICIENT_INFO with corpus-negative prose becomes NOT_FOUND', liveWheel.status, 'NOT_FOUND');
+check('the heading is Not found in approved documents',
+  liveWheel.confidence_label, 'Not found in approved documents');
+check('the honest sentence is preserved', liveWheel.answer, LIVE_PROSE);
+check('no steering-wheel specification is invented', liveWheel.correct_specification, null);
+check('none of the five pages become affirmative citations', liveWheel.sources, []);
+check('at most two reviewed sources are offered', liveWheel.sources_reviewed.length, 2);
+check('reviewed sources remain openable',
+  liveWheel.sources_reviewed.every(s => s.page_verified && s.viewer_url.includes('/page/')), true);
+check('all five stay in diagnostics', liveWheel.sources_verified, 5);
+
+/* ---------- paraphrase variants all reach the same state ---------- */
+for (const [label, prose] of [
+  ['documents reviewed do not specify', 'The documents reviewed do not specify the correct steering wheel type.'],
+  ['sources do not contain', 'The provided sources do not contain specific information about this component.'],
+  ['documents do not provide', 'The approved documents do not provide a specification for the steering wheel.'],
+  ['no information was found', 'No information about the steering wheel was found in the approved documents.'],
+  ['corpus does not state', 'The corpus does not state the correct steering wheel finish.'],
+  ['documents are silent', 'The approved documents are silent on the steering wheel.'],
+  ['contraction', "The checklist doesn't mention the steering wheel."],
+]) {
+  stub(REVIEWED_FIVE, {
+    status: 'INSUFFICIENT_INFO', answer: prose,
+    correct_specification: null, reason: null, supporting_quote: null, conflict_note: null,
+  });
+  const r = await askLive({ question: 'What is the correct steering wheel?', judging_category: 'Interior', car: CAR });
+  check(`variant reaches NOT_FOUND: ${label}`, [r.status, r.sources.length], ['NOT_FOUND', 0]);
+}
+
+/* ---------- a genuine INSUFFICIENT_INFO stays distinct ---------- */
+stub(REVIEWED_FIVE, {
+  status: 'INSUFFICIENT_INFO',
+  answer: 'The question does not identify which component of the interior is being judged.',
+  correct_specification: null, reason: null, supporting_quote: null, conflict_note: null,
+});
+// Must name a subject, or the standalone-question guard (A.12) stops it earlier -
+// which is itself correct, but a different mechanism from the one under test here.
+const vague = await askLive({ question: 'What is the correct finish for the trim?', judging_category: 'Interior', car: CAR });
+check('missing judge context stays INSUFFICIENT_INFO', vague.status, 'INSUFFICIENT_INFO');
+check('it is not relabelled as a corpus gap',
+  vague.confidence_label, 'Insufficient information');
+check('it shows no affirmative citations', vague.sources, []);
+check('and does not imply the corpus lacks the answer', vague.sources_reviewed, []);
+
+/* ---------- the two states are never interchangeable ---------- */
+check('corpus-negative prose is classified as such',
+  statesNotFound('The approved documents do not contain this specification.'), true);
+check('context-missing prose is not',
+  statesNotFound('The question does not identify which component is being judged.'), false);
+check('a missing-year statement is not corpus-negative',
+  statesNotFound('The year is required before this can be answered.'), false);
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

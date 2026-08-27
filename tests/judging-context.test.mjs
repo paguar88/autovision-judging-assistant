@@ -191,8 +191,10 @@ check('Ask becomes the primary action once established',
   /on \? 'btn btn--primary' : 'btn btn--ghost'/.test(appjs), true);
 check('Change reopens setup with current values populated',
   /state\.draft = \{ category: state\.category, concours_class: state\.car\.concours_class \}/.test(appjs), true);
-check('changing context clears the displayed answer and last question',
-  /function openSetup\(\)[\s\S]*clearAnswer\(\)[\s\S]*lastQuestion/.test(appjs), true);
+check('changing context clears the displayed answer',
+  /function openSetup\(\)[\s\S]*?clearAnswer\(\)/.test(appjs), true);
+check('the redundant Last question line is gone',
+  /lastQuestion|Last question/.test(appjs + html + css), false);
 check('Clear resets the judging information fields',
   /\$\('clearInfo'\)\.addEventListener/.test(appjs), true);
 // Clear only resets the draft; it must not silently establish or unestablish anything.

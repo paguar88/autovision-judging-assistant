@@ -3,7 +3,7 @@
    question is answered fresh within the active context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.12';
+const APP_VERSION = '2.0.13';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
@@ -184,7 +184,6 @@ function openSetup() {
   // Reopening the context invalidates anything on screen from the previous one.
   state.established = false;
   clearAnswer();
-  show($('lastQuestion'), false);
   state.draft = { category: state.category, concours_class: state.car.concours_class };
   paintChips();
   show($('contextBar'), false);
@@ -322,8 +321,6 @@ async function ask() {
     return;
   }
 
-  text($('lastQuestion'), `Last question: ${question}`);
-  show($('lastQuestion'), true);                // orientation only; never AI context
   recordQuestion(question);                     // session-only, display only
   renderAnswer(body);
 }

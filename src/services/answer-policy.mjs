@@ -14,26 +14,43 @@ const MAX_REVIEWED = 2;
 
 
 /**
- * Does the answer's opening clause state that the corpus does not contain the
- * requested specification?
+ * Is the answer's opening clause a statement that the CORPUS lacks the requested fact?
  *
- * The model self-reports its status, and it can report SUPPORTED while writing an
- * honest not-found sentence. The prose is then true but the heading is wrong. This is
- * a deterministic check on the FIRST sentence only, so a supported answer carrying a
- * later caveat ("the documents do not state a maximum deduction") is unaffected.
+ * Deliberately compositional rather than a list of sentences. A negative-corpus
+ * statement is recognised by three parts appearing together in the first sentence:
  *
- * It never manufactures an answer - it only stops a negative one being dressed as
- * positive.
+ *   subject   - the approved material ("documents", "sources", "corpus", "checklist")
+ *   negation  - "no", "not", "n't", "lacks", "absent", "silent"
+ *   provision - a word for stating or holding a fact ("specify", "contain", "provide",
+ *               "information", "specification", ...)
+ *
+ * So "the documents reviewed do not specify", "the provided sources do not contain
+ * specific information", "the approved documents do not provide" and "the corpus does
+ * not state" all classify the same way, without anyone having to enumerate them.
+ *
+ * First sentence only, so a supported answer carrying a later caveat is unaffected.
+ * This never manufactures an answer - it only stops a negative one being presented as
+ * positive, and only when the model's own prose contradicts its reported status.
  */
-export function statesNotFound(answerText) {
+const CORPUS_SUBJECT = /\b(documents?|sources?|corpus|records?|materials?|notes|guidelines?|checklists?|references?|documentation)\b/i;
+const NEGATION = /\b(no|not|never|nothing|none|lacks?|lacking|absent|silent|without)\b|n't/i;
+const PROVISION = /\b(specif(?:y|ies|ied|ication|ications)|states?|stated|contains?|contain|provides?|provide|describes?|describe|indicates?|indicate|addresses?|address|mentions?|mention|defines?|define|covers?|cover|lists?|includes?|include|information|details?|guidance|reference|find|found|locate|located|identif(?:y|ies|ied))\b/i;
+/** "silent on X" carries the negation and the missing provision in one word. */
+const SILENT = /\bsilent\b/i;
+
+/** @returns {'corpus_negative'|null} */
+export function classifyAnswerProse(answerText) {
   const first = String(answerText || '').trim().split(/(?<=[.!?])\s+/)[0] || '';
-  return [
-    /\bdo(?:es)?\s+not\s+(?:specify|state|describe|indicate|address|cover|mention|provide|contain|define)\b/i,
-    /\b(?:is|are)\s+not\s+(?:specified|stated|described|addressed|covered|mentioned|defined)\b/i,
-    /\bno\s+(?:specification|information|guidance|detail|reference|mention|record)\b/i,
-    /\b(?:could|can)\s*not\s+(?:be\s+)?(?:find|found|locate|located|determine|determined)\b/i,
-    /\bnot\s+found\s+in\s+the\s+approved\b/i,
-  ].some(re => re.test(first));
+  if (!first) return null;
+  if (CORPUS_SUBJECT.test(first) && SILENT.test(first)) return 'corpus_negative';
+  const hasAll = CORPUS_SUBJECT.test(first) && NEGATION.test(first) && PROVISION.test(first);
+  // "No information about X was found in the approved documents" - same shape.
+  return hasAll ? 'corpus_negative' : null;
+}
+
+/** Kept as the named predicate used by the policy and its tests. */
+export function statesNotFound(answerText) {
+  return classifyAnswerProse(answerText) === 'corpus_negative';
 }
 
 /** Resolve retrieval results into verified citations. Model claims are ignored. */
@@ -113,7 +130,12 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
   // A page being retrieved and page-verified does not make it evidence FOR the answer.
   // When the answer itself says the corpus does not contain the requested
   // specification, present that as a not-found result rather than a supported one.
-  if (stillSubstantive() && status !== 'CONFLICT' && statesNotFound(answer)) {
+  // Any status may be overridden when the prose plainly contradicts it. The previous
+  // gate only considered substantive statuses, so a model reporting INSUFFICIENT_INFO
+  // with negative-corpus prose was never reclassified - the live steering-wheel case.
+  // CONFLICT is excluded because it is about sources disagreeing, not absence.
+  const OVERRIDABLE = ['SUPPORTED', 'RELATED_HISTORICAL', 'INSUFFICIENT_INFO', 'NO_SOURCE'];
+  if (OVERRIDABLE.includes(status) && statesNotFound(answer)) {
     diagnostics.push(`Model reported ${parsed?.status}, but the answer states the documents do not contain the requested specification. Presented as NOT_FOUND.`);
     status = 'NOT_FOUND';
     correctSpecification = null;
@@ -154,7 +176,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     NO_SOURCE: 'I could not find a supported answer to this judging question in the approved source documents.',
     NOT_FOUND: 'The approved documents reviewed do not specify this.',
     OUT_OF_SCOPE: 'This assistant answers questions from the approved judging documents. This question appears to be outside that scope.',
-    INSUFFICIENT_INFO: 'The available information is not enough to support a sourced answer.',
+    INSUFFICIENT_INFO: 'This question does not identify enough about what is being judged to return a sourced answer. Restate it naming the specific component.',
     NO_VERIFIED_PAGE: 'Supporting material was found in the approved documents, but its exact page could not be verified. An answer is not shown without a verified source page. The documents are listed below.',
   };
 
@@ -196,7 +218,12 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
   // citation cards used for supporting evidence - and are capped so the judge is not
   // handed a retrieval dump.
   const notFoundLike = ['NOT_FOUND', 'NO_SOURCE'].includes(status);
-  const displayedSources = notFoundLike ? [] : selection.displayed;
+  // Affirmative cards mean "this page supports the answer". Only a substantive answer
+  // has support. NO_VERIFIED_PAGE keeps its document-level entries, which render as
+  // unverified stamps rather than as evidence. INSUFFICIENT_INFO shows nothing at all:
+  // the corpus was not the problem, so listing pages would imply it was.
+  const affirmative = stillSubstantive() || status === 'NO_VERIFIED_PAGE';
+  const displayedSources = affirmative ? selection.displayed : [];
   const reviewed = notFoundLike ? verified.slice(0, MAX_REVIEWED) : [];
   if (notFoundLike && verified.length > reviewed.length) {
     diagnostics.push(`${verified.length} page(s) were reviewed; ${reviewed.length} shown.`);

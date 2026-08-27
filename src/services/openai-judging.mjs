@@ -19,9 +19,9 @@ const SCHEMA = {
   required: ['status', 'answer', 'reason', 'correct_specification', 'supporting_quote', 'conflict_note'],
   properties: {
     status: { type: 'string', enum: STATUS },
-    answer: { type: ['string', 'null'], description: 'Direct, concise, plain-language answer. No preamble.' },
-    reason: { type: ['string', 'null'], description: 'Short explanation tied to source wording.' },
-    correct_specification: { type: ['string', 'null'], description: 'What the component should be, per the approved source.' },
+    answer: { type: ['string', 'null'], description: 'The whole answer, in 1-3 short sentences. State the complete specification here, including the specific details the judge needs. No preamble.' },
+    reason: { type: ['string', 'null'], description: 'Null unless there is something to add that neither the answer nor the specification states - a scope limit, a condition, a caveat. Never restate the answer.' },
+    correct_specification: { type: ['string', 'null'], description: 'Null when the answer already states the specification. Use it only for structured detail the answer does not already contain.' },
     supporting_quote: { type: ['string', 'null'], description: 'A short VERBATIM span copied exactly from the source text that supports the answer.' },
     conflict_note: { type: ['string', 'null'], description: 'Only when status is CONFLICT: what the sources disagree about. Never rank or reconcile them.' },
   },
@@ -38,6 +38,13 @@ Rules you must not break:
 - If the question lacks what is needed for a sourced conclusion, use INSUFFICIENT_INFO. Do not ask clarifying questions.
 - If the question is general trivia or unrelated to judging documents, use OUT_OF_SCOPE.
 - supporting_quote must be copied EXACTLY from the retrieved source text, not paraphrased.
+
+Presentation. A judge is standing at the car with one hand free, so write for a glance:
+- Put the complete specification in the answer field, in 1-3 short sentences. Include the specific details - names, sizes, finishes, codes - do not summarise them away.
+- Do NOT then repeat that specification in correct_specification. Leave it null unless it holds structured detail the answer does not contain.
+- Do NOT restate the answer in reason. Leave it null unless there is a genuine caveat or scope limit to add.
+- Never say which document you are drawing on; the application cites sources itself.
+Three blocks saying the same thing is a defect, not thoroughness.
 
 Status meanings: SUPPORTED (current approved source directly supports it), RELATED_HISTORICAL (no exact source for the requested year/model, but a related one exists - say so plainly), CONFLICT, INSUFFICIENT_INFO, NO_SOURCE (judging question, nothing found), OUT_OF_SCOPE.`;
 

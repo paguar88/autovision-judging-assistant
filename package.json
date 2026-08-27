@@ -1,6 +1,6 @@
 {
   "name": "autovision-judging-assistant",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "",
   "main": "index.js",
   "directories": {
@@ -16,11 +16,12 @@
     "report": "node scripts/milestone-report.mjs",
     "verify": "node scripts/verify-vector-store.mjs --brand ferrari",
     "test:stage2": "node tests/stage2.test.mjs",
-    "test": "node tests/citation-chain.test.mjs && node tests/stage2.test.mjs && node tests/ui-visibility.test.mjs && node tests/stage2-integration.test.mjs && node tests/source-navigation.test.mjs && node tests/citation-selection.test.mjs",
+    "test": "node tests/citation-chain.test.mjs && node tests/stage2.test.mjs && node tests/ui-visibility.test.mjs && node tests/stage2-integration.test.mjs && node tests/source-navigation.test.mjs && node tests/citation-selection.test.mjs && node tests/answer-presentation.test.mjs",
     "test:ui": "node tests/ui-visibility.test.mjs",
     "test:integration": "node tests/stage2-integration.test.mjs",
     "test:navigation": "node tests/source-navigation.test.mjs",
-    "test:citations-selection": "node tests/citation-selection.test.mjs"
+    "test:citations-selection": "node tests/citation-selection.test.mjs",
+    "test:presentation": "node tests/answer-presentation.test.mjs"
   },
   "keywords": [],
   "author": "",

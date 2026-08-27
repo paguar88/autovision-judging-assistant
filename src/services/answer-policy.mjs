@@ -7,6 +7,7 @@
 
 import { buildCitation } from './citation-resolver.mjs';
 import { selectCitations } from './citation-selection.mjs';
+import { pruneRedundantFields } from './answer-presentation.mjs';
 
 /** Resolve retrieval results into verified citations. Model claims are ignored. */
 export function verifySources({ results, corpus: c }) {
@@ -136,12 +137,26 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     warnings.push(`${selection.suppressed.length} further verified page(s) were retrieved but did not add support beyond those shown.`);
   }
 
+  // Presentation, after selection so novelty can be grounded in the pages actually
+  // cited. Only removes a block that carries no source-grounded fact of its own.
+  const presentation = stillSubstantive()
+    ? pruneRedundantFields({
+        answer, question, correctSpecification, reason,
+        // All VERIFIED sources, not just the displayed subset: a caveat may rest on a
+        // verified page that citation selection judged duplicative for display.
+        sourceTexts: verified.map(s => s.primary_text).filter(Boolean),
+        titles: [...new Set(sources.map(s => s.display_title).filter(Boolean))],
+        corpusTexts,
+      })
+    : { correct_specification: correctSpecification, reason, suppressed: [] };
+
   return {
     status,
     confidence_label: labels[status] || labels.ERROR,
     answer: answer || messages[status] || null,
-    reason: stillSubstantive() ? reason : null,
-    correct_specification: stillSubstantive() ? correctSpecification : null,
+    reason: stillSubstantive() ? presentation.reason : null,
+    correct_specification: stillSubstantive() ? presentation.correct_specification : null,
+    presentation_suppressed: presentation.suppressed,
     conflict_note: status === 'CONFLICT' ? (parsed?.conflict_note ?? null) : null,
     deduction,
     judge_note: judgeNote,

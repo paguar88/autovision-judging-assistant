@@ -24,6 +24,19 @@ export function corpus(brand = 'ferrari') {
   const manifest = j(`${B}/document-manifest.json`).documents;
   const unitIndex = j(`${B}/retrieval-units.json`);
 
+  // Slice availability is read from the FROZEN ingestion manifest, not from the local
+  // filesystem. Per netlify.toml only the `source` function bundles the page-slice
+  // bytes (A.7 keeps that 34 MB out of every other bundle), so a filesystem probe
+  // inside `ask` always answered false and suppressed every verified page.
+  //
+  // This is not a weaker check. The manifest is the frozen record of what ingestion
+  // actually generated, carrying each slice's physical page number and checksum, and
+  // `source` independently re-authorises the document and re-validates the page range
+  // before returning any bytes.
+  const sliceIndex = new Map(
+    manifest.map(d => [d.document_id, new Set((d.slices || []).map(s => s.physical_page_number))]),
+  );
+
   cache = {
     brand,
     cfg,
@@ -36,8 +49,13 @@ export function corpus(brand = 'ferrari') {
     mappings: j(cfg.score_sheet_mappings),
     slicePath: (documentId, page) =>
       path.join(ROOT, B, 'page-slices', documentId, `p${String(page).padStart(4, '0')}.pdf`),
-    sliceExists: (documentId, page) =>
-      page != null && existsSync(path.join(ROOT, B, 'page-slices', documentId, `p${String(page).padStart(4, '0')}.pdf`)),
+    sliceExists: (documentId, page) => {
+      if (page == null) return false;
+      const pages = sliceIndex.get(documentId);
+      if (pages && pages.size) return pages.has(page);
+      // Defensive fallback for a manifest predating slice records.
+      return existsSync(path.join(ROOT, B, 'page-slices', documentId, `p${String(page).padStart(4, '0')}.pdf`));
+    },
     vectorStoreId: () => process.env[cfg.vector_store_env_var] || null,
   };
   return cache;

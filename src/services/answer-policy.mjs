@@ -59,6 +59,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
   let correctSpecification = parsed?.correct_specification ?? null;
 
   const substantive = ['SUPPORTED', 'RELATED_HISTORICAL', 'CONFLICT'].includes(status);
+  const stillSubstantive = () => ['SUPPORTED', 'RELATED_HISTORICAL', 'CONFLICT'].includes(status);
 
   // v1.0 §31: a substantive answer requires at least one verified source. If the
   // model asserted support with nothing verifiable behind it, the answer text is
@@ -67,6 +68,17 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     status = 'NO_SOURCE';
     answer = null; reason = null; correctSpecification = null;
     warnings.push('Model reported a supported answer with no resolvable source. Converted to NO_SOURCE.');
+  }
+
+  // Exact-source verification is mandatory. An answer supported only by citations
+  // whose physical page could not be verified must not be presented as an official
+  // source-supported answer with a "Page not verified" note beneath it. The sources
+  // are still listed at document level so the judge can open them, but the
+  // conclusion is withheld.
+  if (stillSubstantive() && sources.length > 0 && verified.length === 0) {
+    status = 'NO_VERIFIED_PAGE';
+    answer = null; reason = null; correctSpecification = null;
+    warnings.push('Supporting material was retrieved but no physical page could be verified for it, so the answer was withheld.');
   }
 
   // A conflict must not be hidden behind a single-source SUPPORTED response.
@@ -83,7 +95,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
   // corpus, so both fields are omitted entirely rather than shown as unknown.
   const deduction = { applicable: false, score_sheet_line: null, maximum_deduction: null };
 
-  const judgeNote = substantive
+  const judgeNote = stillSubstantive()
     ? 'The judge determines the actual deduction based on the applicable judging standards, authenticity, and condition.'
     : null;
 
@@ -93,6 +105,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     CONFLICT: 'Conflicting source information',
     INSUFFICIENT_INFO: 'Insufficient information',
     NO_SOURCE: 'No supporting source found',
+    NO_VERIFIED_PAGE: 'No verified source page',
     OUT_OF_SCOPE: 'Outside scope',
     ERROR: 'Could not complete the request',
   };
@@ -101,14 +114,15 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     NO_SOURCE: 'I could not find a supported answer to this judging question in the approved source documents.',
     OUT_OF_SCOPE: 'This assistant answers questions from the approved judging documents. This question appears to be outside that scope.',
     INSUFFICIENT_INFO: 'The available information is not enough to support a sourced answer.',
+    NO_VERIFIED_PAGE: 'Supporting material was found in the approved documents, but its exact page could not be verified. An answer is not shown without a verified source page. The documents are listed below.',
   };
 
   return {
     status,
     confidence_label: labels[status] || labels.ERROR,
     answer: answer || messages[status] || null,
-    reason: substantive ? reason : null,
-    correct_specification: substantive ? correctSpecification : null,
+    reason: stillSubstantive() ? reason : null,
+    correct_specification: stillSubstantive() ? correctSpecification : null,
     conflict_note: status === 'CONFLICT' ? (parsed?.conflict_note ?? null) : null,
     deduction,
     judge_note: judgeNote,

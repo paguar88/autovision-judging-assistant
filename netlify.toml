@@ -38,6 +38,14 @@
   to = "/.netlify/functions/sources"
   status = 200
 
+# Everything the source resolver needs travels in the PATH. A rewrite whose target
+# already carries a query string cannot be relied on to merge the caller's own query
+# params, so `?meta=1` was being lost and the metadata request came back as PDF bytes.
+[[redirects]]
+  from = "/source/:documentId/meta"
+  to = "/.netlify/functions/source?document_id=:documentId&meta=1"
+  status = 200
+
 [[redirects]]
   from = "/source/:documentId/page/:page"
   to = "/.netlify/functions/source?document_id=:documentId&page=:page"

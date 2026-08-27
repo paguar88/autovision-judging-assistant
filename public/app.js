@@ -3,19 +3,23 @@
    question is answered fresh within the active car context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.2';
+const APP_VERSION = '2.0.3';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
 const show = (el, on = true) => { el.hidden = !on; };
 const text = (el, s) => { el.textContent = s == null ? '' : String(s); };
 
+/** Where Back goes from the source viewer. Pure and testable: a source opened from a
+    citation returns to the answer; one opened from the library returns to the list. */
+function nextViewOnBack(origin) { return origin === 'library' ? 'docs' : 'answer'; }
+
 const state = {
   category: null,                                    // sticky for the session (A.9)
   car: { year: null, model: null, concours_class: null },
   lastAnswer: null,
   lastRequest: null,
-  viewer: { documentId: null, page: 1, pageCount: 1, title: '' },
+  viewer: { documentId: null, page: 1, pageCount: 1, title: '', origin: 'answer' },
 };
 
 const api = async (url, options = {}) => {
@@ -232,19 +236,33 @@ function renderSources(sources) {
     go.textContent = s.page_verified ? 'View exact source' : 'Open document';
     btn.appendChild(go);
 
-    btn.addEventListener('click', () => openSource(s.document_id, s.page_number || 1, s.display_title));
+    btn.addEventListener('click', () => openSource(s.document_id, s.page_number || 1, s.display_title, 'answer'));
     wrap.appendChild(btn);
   });
 }
 
 /* ---------------- Source viewer ---------------- */
-async function openSource(documentId, page, title) {
-  const { ok, body } = await api(`/source/${encodeURIComponent(documentId)}?meta=1&page=${page}`);
-  if (!ok) return;
-  state.viewer = { documentId, page, pageCount: body.page_count, title: title || body.display_title };
+async function openSource(documentId, page, title, origin = 'answer') {
+  const errEl = origin === 'library' ? $('docsError') : $('sourceError');
+  show(errEl, false);
+
+  // Metadata comes from a path-based route so no query parameter has to survive a
+  // rewrite. A 200 carrying PDF bytes instead of JSON previously left body null and
+  // threw here, which is why the viewer never appeared.
+  const { ok, body } = await api(`/source/${encodeURIComponent(documentId)}/meta`);
+  if (!ok || !body || typeof body.page_count !== 'number') {
+    text(errEl, 'That source document could not be opened. Try again.');
+    show(errEl, true);
+    return false;
+  }
+
+  const pageCount = body.page_count;
+  const target = Math.min(Math.max(parseInt(page, 10) || 1, 1), pageCount);
+  state.viewer = { documentId, page: target, pageCount, title: title || body.display_title, origin };
   text($('viewerTitle'), state.viewer.title);
   paintViewer();
   show($('viewer'), true);
+  return true;
 }
 
 function paintViewer() {
@@ -260,7 +278,13 @@ function paintViewer() {
 $('prevPage').addEventListener('click', () => { if (state.viewer.page > 1) { state.viewer.page--; paintViewer(); } });
 $('nextPage').addEventListener('click', () => { if (state.viewer.page < state.viewer.pageCount) { state.viewer.page++; paintViewer(); } });
 // Back returns to the answer, which is untouched underneath (v1.0 §25).
-$('viewerBack').addEventListener('click', () => { show($('viewer'), false); $('viewerFrame').src = 'about:blank'; });
+$('viewerBack').addEventListener('click', () => {
+  const back = nextViewOnBack(state.viewer.origin);
+  show($('viewer'), false);
+  $('viewerFrame').src = 'about:blank';
+  // The answer card is untouched underneath; the library needs re-showing.
+  if (back === 'docs') show($('docs'), true);
+});
 
 /* ---------------- Source documents ---------------- */
 $('openSources').addEventListener('click', async () => {
@@ -292,7 +316,11 @@ $('openSources').addEventListener('click', async () => {
     const open = document.createElement('button');
     open.className = 'chip';
     open.textContent = 'Open document';
-    open.addEventListener('click', () => { show($('docs'), false); openSource(d.document_id, 1, d.display_title); });
+    open.addEventListener('click', async () => {
+      // Hide the list only on success, so a failure can never dump the judge back
+      // onto the main screen with no explanation.
+      if (await openSource(d.document_id, 1, d.display_title, 'library')) show($('docs'), false);
+    });
     card.appendChild(open);
 
     list.appendChild(card);

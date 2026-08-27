@@ -1,4 +1,4 @@
-/* Concours Judging Assistant - app version 2.0.7 - v1.0 §24, Addendum A.13.
+/* Concours Judging Assistant - app version 2.0.8 - v1.0 §24, Addendum A.13.
    Outdoor readability first: high contrast, large targets, no web fonts (a judge on
    cellular beside a car should not wait on a font, or read a fallback flash).
    Marque marks are never used. Red is reserved for actions only, so it never doubles
@@ -51,6 +51,9 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 .wordmark { color: var(--ink-soft); margin: 0; }
 .wordmark--sm { font-size: 11px; }
+/* Descriptive marque use only - never a marque mark or typeface (A.13). */
+.wordmark__sep { opacity: 0.45; margin: 0 2px; }
+.wordmark__marque { color: var(--ink); letter-spacing: 0.14em; }
 
 /* ---------- Gate ---------- */
 .gate { min-height: 100dvh; display: grid; place-items: center; padding: var(--gap); }
@@ -69,32 +72,53 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 .card {
   background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
-  padding: var(--gap); margin-top: var(--gap);
+  padding: 18px var(--gap); margin-top: var(--gap);
 }
 
-/* ---------- Category / class choice ---------- */
-.pick { padding: 32px 0; }
-.pick__title { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.01em; }
-.pick__hint { color: var(--ink-soft); margin: 0 0 18px; }
-.pick__row { display: flex; flex-direction: column; gap: 10px; }
-
+/* ---------- Choice chips ---------- */
 .chip {
-  min-height: var(--tap); padding: 0 18px;
+  min-height: var(--tap); padding: 0 16px;
   background: var(--paper); color: var(--ink);
-  border: 1.5px solid var(--ink); border-radius: var(--radius);
+  border: 1.5px solid var(--rule); border-radius: var(--radius);
   font-size: 16px; font-weight: 600; cursor: pointer;
 }
-.chip--lg { min-height: 60px; font-size: 18px; text-align: left; }
-.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
-/* ---------- Context strip ---------- */
-.context { border-bottom: 1px solid var(--rule); padding: 12px 0; }
-.context__line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
-.context__car { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
-.context__role { color: var(--ink-soft); font-size: 14px; }
-.context__class { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.context__prompt { color: var(--caution); }
-.context__actions { margin-top: 8px; }
+/* ---------- Context setup: the first action, and visibly so ---------- */
+.card--setup { border-top: 3px solid var(--ink); }
+.setup__title { font-size: 19px; margin: 0 0 4px; letter-spacing: -0.01em; }
+.setup__hint { color: var(--ink-soft); font-size: 14px; margin: 0 0 18px; }
+
+/* Year needs four digits; the model name needs the rest of the row. */
+.row--car { display: grid; grid-template-columns: 5.5rem 1fr; gap: 12px; align-items: start; }
+@media (max-width: 340px) { .row--car { grid-template-columns: 1fr; } }
+
+.choice { border: 0; padding: 0; margin: 0 0 16px; }
+.choice__row { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 6px; }
+.choice__row--two { grid-template-columns: 1fr 1fr; }
+@media (min-width: 460px) { .choice__row { grid-template-columns: repeat(3, 1fr); } }
+
+/* ---------- Established context header ---------- */
+.context {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 0; border-bottom: 2px solid var(--ink);
+}
+.context__main { min-width: 0; }
+.context__car {
+  margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.context__role {
+  margin: 2px 0 0; color: var(--ink-soft);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+}
+
+/* ---------- Question, locked until context exists ---------- */
+.card--question.is-locked { opacity: 0.55; }
+.card--question.is-locked .field__label::after {
+  content: " · locked"; color: var(--caution); letter-spacing: 0.06em;
+}
+textarea:disabled, input:disabled { background: var(--paper-warm); cursor: not-allowed; }
 
 /* ---------- Fields ---------- */
 .field { display: block; margin-bottom: 14px; }
@@ -119,6 +143,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visib
 .btn--primary { background: var(--action); color: var(--action-ink); }
 .btn--primary:disabled { background: var(--ink-soft); cursor: not-allowed; }
 .btn--ghost { background: var(--paper); color: var(--ink); border-color: var(--ink); }
+.btn--sm { width: auto; min-height: 40px; padding: 0 14px; font-size: 15px; flex: 0 0 auto; }
+.btn--primary { letter-spacing: 0.02em; }
+.btn + .linkbtn { display: block; margin: 10px auto 0; }
+.linkbtn--centred { width: 100%; text-align: center; }
 .linkbtn {
   background: none; border: 0; padding: 8px 0; min-height: var(--tap);
   font: inherit; font-size: 15px; font-weight: 600;

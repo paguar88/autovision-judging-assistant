@@ -33,16 +33,33 @@ export default async (request) => {
     concours_class: CLASSES.includes(body.car?.concours_class) ? body.car.concours_class : null,
   };
 
-  // 1. Standalone-question guard (A.12). No answer card, no OpenAI request, no cost.
+  // 1. Judging context must be established. Enforced here, not only by disabling the
+  //    input: a disabled control is a convenience and a client can be bypassed.
+  const missing = [];
+  if (!/^\d{4}$/.test(String(car.year || ''))) missing.push('year');
+  if (!car.model) missing.push('model');
+  if (!category) missing.push('judging area');
+  if (!car.concours_class) missing.push('class');
+  if (missing.length) {
+    return json({
+      status: 'CONTEXT_INCOMPLETE',
+      confidence_label: 'Judging context incomplete',
+      missing,
+      message: `Set the judging context before asking: ${missing.join(', ')}.`,
+    }, 400);
+  }
+
+  // 2. Standalone-question guard (A.12). No answer card, no OpenAI request, no cost.
   const standalone = checkStandalone(question);
   if (!standalone.ok) {
     return json({ status: 'NEEDS_REPHRASE', code: standalone.code, message: standalone.message });
   }
 
-  const warnings = [];
+  const warnings = [];      // judge-facing: things that change how they read the answer
+  const diagnostics = [];   // internal: retrieval behaviour, never rendered
   const c = corpus('ferrari');
 
-  // 2. Curated alias normalization before retrieval (A.11).
+  // 3. Curated alias normalization before retrieval (A.11).
   let retrievalModel = null;
   if (car.model) {
     const resolved = resolveModel(car.model);
@@ -67,7 +84,7 @@ export default async (request) => {
     return json({ status: 'ERROR', confidence_label: 'Could not complete the request', error: 'Retrieval is not configured.' }, 503);
   }
 
-  // 3. Internal timeout below the platform limit (A.4). A timeout is ERROR + Retry,
+  // 4. Internal timeout below the platform limit (A.4). A timeout is ERROR + Retry,
   //    never NO_SOURCE.
   const budget = parseInt(process.env.JUDGING_TIMEOUT_MS || '8500', 10);
   const controller = new AbortController();
@@ -82,15 +99,15 @@ export default async (request) => {
       signal: controller.signal,
     });
 
-    // 4. Reconcile model output against retrieval metadata and the frozen manifest.
+    // 5. Reconcile model output against retrieval metadata and the frozen manifest.
     const { sources, verified, rejected } = verifySources({ results, corpus: c });
-    if (rejected.length) warnings.push(`${rejected.length} retrieved source(s) could not be reconciled to the approved manifest and were discarded.`);
+    if (rejected.length) diagnostics.push(`${rejected.length} retrieved source(s) could not be reconciled to the approved manifest and were discarded.`);
     if (sources.length && !verified.length) {
-      warnings.push('No exact page could be verified for these sources. The document is cited without a page.');
+      diagnostics.push('No exact page could be verified for these sources.');
     }
 
     return json(applyPolicy({
-      parsed, sources, verified, rejected, duration_ms, model, car, category, warnings,
+      parsed, sources, verified, rejected, duration_ms, model, car, category, warnings, diagnostics,
       question,
       corpusTexts: c.units.map(u => u.primary_text),   // frozen corpus, for term salience
     }));

@@ -1,9 +1,9 @@
 /* Concours Judging Assistant - judge interface.
    No persistence: session context only (v1.0 §22). No conversational thread; each
-   question is answered fresh within the active car context (A.12). Model text is
+   question is answered fresh within the active context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.7';
+const APP_VERSION = '2.0.8';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
@@ -14,11 +14,19 @@ const text = (el, s) => { el.textContent = s == null ? '' : String(s); };
     citation returns to the answer; one opened from the library returns to the list. */
 function nextViewOnBack(origin) { return origin === 'library' ? 'docs' : 'answer'; }
 
+/** Judging context is established only when all four values are present. The server
+    enforces the same rule, so a disabled control is a convenience, not the guard. */
+function contextComplete(ctx) {
+  return Boolean(ctx.car.year && /^\d{4}$/.test(String(ctx.car.year))
+    && ctx.car.model && ctx.car.concours_class && ctx.category);
+}
+
 const state = {
-  category: null,                                    // sticky for the session (A.9)
+  established: false,
+  category: null,
   car: { year: null, model: null, concours_class: null },
+  draft: { category: null, concours_class: null },
   lastAnswer: null,
-  lastRequest: null,
   viewer: { documentId: null, page: 1, pageCount: 1, title: '', origin: 'answer' },
 };
 
@@ -44,76 +52,118 @@ async function enter() {
   $('password').value = '';
   show($('gate'), false);
   show($('app'), true);
+  $('carYear').focus();
 }
 $('enter').addEventListener('click', enter);
 $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') enter(); });
 
-/* ---------------- Category (sticky) ---------------- */
-document.querySelectorAll('[data-category]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.category = btn.dataset.category;
-    document.querySelectorAll('[data-category]').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
-    text($('roleLabel'), `${state.category} judge`);
-    show($('categoryPick'), false);
-    show($('work'), true);
-    $('carYear').focus();
-  });
-});
-
-/* ---------------- Car context ---------------- */
-function renderCar() {
-  const { year, model, concours_class } = state.car;
-  text($('carLabel'), model ? [year, 'Ferrari', model].filter(Boolean).join(' ') + (concours_class ? ` · ${concours_class}` : '') : 'No car selected');
-  show($('classPick'), Boolean(model) && !concours_class);
-  show($('newCar'), Boolean(model));
-  show($('carEntry'), !model);
+/* ---------------- Context setup ---------------- */
+function paintChips() {
+  document.querySelectorAll('[data-category]').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.category === state.draft.category)));
+  document.querySelectorAll('[data-class]').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.class === state.draft.concours_class)));
 }
 
-$('setCar').addEventListener('click', () => {
-  const year = $('carYear').value.trim();
-  const model = $('carModel').value.trim();
-  show($('carError'), false);
-  if (!model) {
-    text($('carError'), 'Enter the model, for example 330 GTC.');
-    show($('carError'), true);
-    return;
-  }
-  state.car = { year: year || null, model, concours_class: null };
-  renderCar();
-  $('question').focus();
+document.querySelectorAll('[data-category]').forEach(btn => {
+  btn.addEventListener('click', () => { state.draft.category = btn.dataset.category; paintChips(); });
 });
-
 document.querySelectorAll('[data-class]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.car.concours_class = btn.dataset.class;
-    renderCar();
-  });
+  btn.addEventListener('click', () => { state.draft.concours_class = btn.dataset.class; paintChips(); });
 });
 
-// New car clears car context, question and answer. Category persists (A.9).
-$('newCar').addEventListener('click', () => {
-  state.car = { year: null, model: null, concours_class: null };
-  $('carYear').value = ''; $('carModel').value = ''; $('question').value = '';
+/** Enable question entry only while a complete context is established. */
+function paintLock() {
+  const on = state.established;
+  $('question').disabled = !on;
+  $('ask').disabled = !on;
+  $('questionCard').classList.toggle('is-locked', !on);
+  // Red marks the one action that matters now: setup before context, Ask after.
+  $('ask').className = on ? 'btn btn--primary' : 'btn btn--ghost';
+  $('question').placeholder = on
+    ? 'Are the knock-off spinners correct?'
+    : 'Set the judging context first';
+}
+
+function paintContext() {
+  const { year, model, concours_class } = state.car;
+  text($('carLabel'), `${year} Ferrari ${model} · ${concours_class}`);
+  text($('roleLabel'), `${state.category === 'Engine and Chassis' ? 'Engine & Chassis' : state.category} judge`);
+}
+
+function openSetup() {
+  // Reopening the context invalidates anything on screen from the previous one.
+  state.established = false;
   clearAnswer();
   show($('lastQuestion'), false);
-  renderCar();
+  state.draft = { category: state.category, concours_class: state.car.concours_class };
+  paintChips();
+  show($('contextBar'), false);
+  show($('setup'), true);
+  show($('clearCar'), true);
+  paintLock();
+}
+
+function establish() {
+  show($('setupError'), false);
+  const year = $('carYear').value.trim();
+  const model = $('carModel').value.trim();
+  const candidate = {
+    category: state.draft.category,
+    car: { year, model, concours_class: state.draft.concours_class },
+  };
+
+  if (!contextComplete(candidate)) {
+    const missing = [
+      /^\d{4}$/.test(year) ? null : 'a four-digit year',
+      model ? null : 'the model',
+      candidate.category ? null : 'a judging area',
+      candidate.car.concours_class ? null : 'a class',
+    ].filter(Boolean);
+    text($('setupError'), `Still needed: ${missing.join(', ')}.`);
+    show($('setupError'), true);
+    return;
+  }
+
+  state.car = candidate.car;
+  state.category = candidate.category;
+  state.established = true;
+
+  paintContext();
+  show($('setup'), false);
+  show($('contextBar'), true);
+  paintLock();
+  $('question').focus();
+}
+
+$('setContext').addEventListener('click', establish);
+$('changeContext').addEventListener('click', openSetup);
+
+// Clear the car without disturbing the judging area or class - the handoff case where
+// the same judge moves to the next vehicle.
+$('clearCar').addEventListener('click', () => {
+  $('carYear').value = '';
+  $('carModel').value = '';
+  state.car = { year: null, model: null, concours_class: state.draft.concours_class };
+  $('carYear').focus();
 });
 
-// New question clears the result but keeps the car.
+/* ---------------- Ask ---------------- */
+function clearAnswer() {
+  state.lastAnswer = null;
+  show($('answerCard'), false);
+  show($('nudge'), false);
+  show($('sourceError'), false);
+}
+
 $('newQuestion').addEventListener('click', () => {
   $('question').value = '';
   clearAnswer();
   $('question').focus();
 });
 
-function clearAnswer() {
-  state.lastAnswer = null;
-  show($('answerCard'), false);
-  show($('nudge'), false);
-}
-
-/* ---------------- Ask ---------------- */
 async function ask() {
+  if (!state.established) return;               // server enforces this too
   const question = $('question').value.trim();
   show($('nudge'), false);
   clearAnswer();
@@ -124,12 +174,7 @@ async function ask() {
     return;
   }
 
-  const payload = {
-    question,
-    judging_category: state.category,
-    car: state.car,
-  };
-  state.lastRequest = payload;
+  const payload = { question, judging_category: state.category, car: state.car };
 
   $('ask').disabled = true;                     // prevents duplicate submits (v1.0 §26)
   show($('loading'), true);
@@ -149,6 +194,13 @@ async function ask() {
     text($('nudge'), body.message);
     show($('nudge'), true);
     return;                                     // input stays populated for editing
+  }
+
+  if (body.status === 'CONTEXT_INCOMPLETE') {
+    text($('nudge'), body.message);
+    show($('nudge'), true);
+    openSetup();
+    return;
   }
 
   if (body.status === 'MODEL_NOT_COVERED') {
@@ -189,6 +241,7 @@ function renderAnswer(a) {
 
   renderSources(a.sources || []);
 
+  // Only judge-facing notices are rendered. Retrieval diagnostics stay in the payload.
   const warn = $('answerWarnings');
   warn.replaceChildren();
   (a.warnings || []).forEach(w => {
@@ -227,7 +280,6 @@ function renderSources(sources) {
     meta.textContent = [
       s.document_version ? `Version ${s.document_version}` : null,
       s.section_title,
-      s.also_contains_page ? `also contains page ${s.also_contains_page}` : null,
     ].filter(Boolean).join(' · ');
     btn.appendChild(meta);
 
@@ -288,6 +340,7 @@ $('viewerBack').addEventListener('click', () => {
 
 /* ---------------- Source documents ---------------- */
 $('openSources').addEventListener('click', async () => {
+  show($('docsError'), false);
   const { ok, body } = await api('/api/sources');
   if (!ok) return;
   const list = $('docsList');
@@ -333,5 +386,6 @@ $('docsBack').addEventListener('click', () => show($('docs'), false));
 (async () => {
   const { body } = await api('/api/auth');
   if (body?.authenticated) { show($('gate'), false); show($('app'), true); }
-  renderCar();
+  paintChips();
+  paintLock();
 })();

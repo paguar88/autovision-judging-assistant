@@ -54,7 +54,7 @@ export function verifySources({ results, corpus: c }) {
  * Apply the policy. Returns the payload the frontend renders.
  * Never lets unsupported answer text reach the judge.
  */
-export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, model, car, category, question = '', corpusTexts = [], warnings = [] }) {
+export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, model, car, category, question = '', corpusTexts = [], warnings = [], diagnostics = [] }) {
   let status = parsed?.status || 'ERROR';
   let answer = parsed?.answer ?? null;
   let reason = parsed?.reason ?? null;
@@ -69,7 +69,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
   if (substantive && sources.length === 0) {
     status = 'NO_SOURCE';
     answer = null; reason = null; correctSpecification = null;
-    warnings.push('Model reported a supported answer with no resolvable source. Converted to NO_SOURCE.');
+    diagnostics.push('Model reported a supported answer with no resolvable source. Converted to NO_SOURCE.');
   }
 
   // Exact-source verification is mandatory. An answer supported only by citations
@@ -80,7 +80,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
   if (stillSubstantive() && sources.length > 0 && verified.length === 0) {
     status = 'NO_VERIFIED_PAGE';
     answer = null; reason = null; correctSpecification = null;
-    warnings.push('Supporting material was retrieved but no physical page could be verified for it, so the answer was withheld.');
+    diagnostics.push('Supporting material was retrieved but no physical page could be verified for it, so the answer was withheld.');
   }
 
   // A conflict must not be hidden behind a single-source SUPPORTED response.
@@ -88,7 +88,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     const docs = new Set(sources.filter(s => s.page_verified).map(s => s.document_id));
     if (parsed?.conflict_note && docs.size > 1) {
       status = 'CONFLICT';
-      warnings.push('Model supplied a conflict note; status raised to CONFLICT.');
+      diagnostics.push('Model supplied a conflict note; status raised to CONFLICT.');
     }
   }
 
@@ -134,7 +134,9 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     : { displayed: sources, suppressed: [], reason: 'not a substantive answer' };
 
   if (selection.suppressed.length) {
-    warnings.push(`${selection.suppressed.length} further verified page(s) were retrieved but did not add support beyond those shown.`);
+    // Retrieval diagnostics, not judge-facing. Citation selection still runs in full;
+    // the count stays in the payload for diagnosis.
+    diagnostics.push(`${selection.suppressed.length} further verified page(s) were retrieved but did not add support beyond those shown.`);
   }
 
   // Presentation, after selection so novelty can be grounded in the pages actually
@@ -180,5 +182,6 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     sources_rejected: rejected.length,
     instrumentation: { duration_ms, model, path: 'text_only' },
     warnings,
+    diagnostics,
   };
 }

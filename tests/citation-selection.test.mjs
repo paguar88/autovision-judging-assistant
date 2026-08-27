@@ -117,7 +117,9 @@ check('the general Judging Guidelines page is not displayed',
 
 check('verification counts still report the full retrieved set',
   [live.sources_verified, live.sources_displayed + live.sources_suppressed], [5, 5]);
-check('suppression is disclosed to the judge', /did not add support/.test(live.warnings.join(' ')), true);
+// v2.0.8: suppression is a retrieval diagnostic, not judge-facing.
+check('suppression is not shown to the judge', live.warnings.join(' '), '');
+check('suppression is recorded in diagnostics', /did not add support/.test(live.diagnostics.join(' ')), true);
 
 /* ---- cross-document support survives when both contribute distinct facts ---- */
 check('cross-document support is preserved when two documents each contribute',
@@ -156,8 +158,8 @@ stub([
 const conflict = await askLive(REQUEST);
 check('a conflict retains every verified source', conflict.sources.length, 3);
 check('conflict status is preserved', conflict.status, 'CONFLICT');
-check('no suppression warning is raised on a conflict',
-  /did not add support/.test(conflict.warnings.join(' ')), false);
+check('no suppression occurs on a conflict',
+  /did not add support/.test([...conflict.warnings, ...conflict.diagnostics].join(' ')), false);
 
 /* ---- DETERMINISM ACROSS REPEATED IDENTICAL REQUESTS ----
    The same question, vehicle context, category and corpus must produce the same

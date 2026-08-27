@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="app-version" content="2.0.7">
-<meta name="theme-color" content="#141414">
+<meta name="app-version" content="2.0.8">
 <title>Concours Judging Assistant</title>
 <link rel="stylesheet" href="/styles.css">
 </head>
@@ -14,7 +13,7 @@
 <!-- Password -->
 <section id="gate" class="gate" aria-label="Sign in">
   <div class="gate__inner">
-    <p class="wordmark">Autovision Studios</p>
+    <p class="wordmark">Autovision Studios <span class="wordmark__sep" aria-hidden="true">|</span> <span class="wordmark__marque">FERRARI</span></p>
     <h1 class="gate__title">Concours<br>Judging Assistant</h1>
     <label class="field">
       <span class="field__label">Event password</span>
@@ -28,91 +27,95 @@
 <!-- Main -->
 <main id="app" class="app" hidden>
   <header class="bar">
-    <p class="wordmark wordmark--sm">Autovision Studios</p>
+    <p class="wordmark wordmark--sm">Autovision Studios <span class="wordmark__sep" aria-hidden="true">|</span> <span class="wordmark__marque">FERRARI</span></p>
     <button id="openSources" class="linkbtn">Source Documents</button>
   </header>
 
-  <!-- Judging category: sticky for the session (A.9) -->
-  <section id="categoryPick" class="pick" aria-label="Choose judging category">
-    <h2 class="pick__title">Which category are you judging?</h2>
-    <p class="pick__hint">This stays set for the session.</p>
-    <div class="pick__row" role="group">
-      <button class="chip chip--lg" data-category="Exterior">Exterior</button>
-      <button class="chip chip--lg" data-category="Interior">Interior</button>
-      <button class="chip chip--lg" data-category="Engine and Chassis">Engine &amp; Chassis</button>
+  <!-- Established context, shown once all four values are set -->
+  <section id="contextBar" class="context" aria-label="Current judging context" hidden>
+    <div class="context__main">
+      <p id="carLabel" class="context__car"></p>
+      <p id="roleLabel" class="context__role"></p>
     </div>
+    <button id="changeContext" class="btn btn--ghost btn--sm">Change</button>
   </section>
 
-  <div id="work" hidden>
-    <!-- Car context strip -->
-    <section class="context" aria-label="Current car">
-      <div class="context__line">
-        <span id="carLabel" class="context__car">No car selected</span>
-        <span class="context__role" id="roleLabel"></span>
-      </div>
-      <div id="classPick" class="context__class" hidden>
-        <span class="context__prompt">Select class</span>
-        <button class="chip" data-class="Regular">Regular</button>
-        <button class="chip" data-class="Preservation">Preservation</button>
-      </div>
-      <div class="context__actions">
-        <button id="newCar" class="linkbtn" hidden>New car</button>
-      </div>
-    </section>
+  <!-- Context setup: the first and only action until it is complete -->
+  <section id="setup" class="card card--setup" aria-label="Set judging context">
+    <h2 class="setup__title">Set the judging context</h2>
+    <p class="setup__hint">All four are required before you can ask a question.</p>
 
-    <!-- Car entry -->
-    <section id="carEntry" class="card">
-      <label class="field">
+    <div class="row row--car">
+      <label class="field field--year">
         <span class="field__label">Year</span>
-        <input id="carYear" type="number" inputmode="numeric" min="1940" max="2030" placeholder="1967">
+        <input id="carYear" type="number" inputmode="numeric" min="1940" max="2030" placeholder="1967" enterkeyhint="next">
       </label>
-      <label class="field">
+      <label class="field field--model">
         <span class="field__label">Model</span>
-        <input id="carModel" type="text" autocapitalize="characters" placeholder="330 GTC" enterkeyhint="done">
+        <input id="carModel" type="text" autocapitalize="characters" placeholder="330 GTC" enterkeyhint="next">
       </label>
-      <button id="setCar" class="btn btn--primary">Set car</button>
-      <p id="carError" class="msg msg--error" role="alert" hidden></p>
-    </section>
-
-    <!-- Question -->
-    <section class="card">
-      <label class="field">
-        <span class="field__label">Question</span>
-        <textarea id="question" rows="3" enterkeyhint="send"
-          placeholder="Are the knock-off spinners correct?"></textarea>
-      </label>
-      <p id="nudge" class="msg msg--nudge" role="alert" hidden></p>
-      <button id="ask" class="btn btn--primary">Ask</button>
-      <p id="lastQuestion" class="lastq" hidden></p>
-    </section>
-
-    <div id="loading" class="loading" hidden>
-      <span class="loading__dot"></span> Searching approved source documents…
     </div>
 
-    <!-- Answer -->
-    <section id="answerCard" class="card card--answer" hidden aria-live="polite">
-      <p id="statusLabel" class="status"></p>
-      <p id="answerText" class="answer"></p>
-      <div id="specBlock" class="block" hidden>
-        <p class="block__label">Correct specification</p>
-        <p id="specText" class="block__body"></p>
+    <fieldset class="choice">
+      <legend class="field__label">Judging area</legend>
+      <div class="choice__row">
+        <button type="button" class="chip" data-category="Exterior" aria-pressed="false">Exterior</button>
+        <button type="button" class="chip" data-category="Interior" aria-pressed="false">Interior</button>
+        <button type="button" class="chip" data-category="Engine and Chassis" aria-pressed="false">Engine &amp; Chassis</button>
       </div>
-      <div id="conflictBlock" class="block block--conflict" hidden>
-        <p class="block__label">What the sources disagree about</p>
-        <p id="conflictText" class="block__body"></p>
+    </fieldset>
+
+    <fieldset class="choice">
+      <legend class="field__label">Class</legend>
+      <div class="choice__row choice__row--two">
+        <button type="button" class="chip" data-class="Regular" aria-pressed="false">Regular</button>
+        <button type="button" class="chip" data-class="Preservation" aria-pressed="false">Preservation</button>
       </div>
-      <p id="reasonText" class="reason" hidden></p>
-      <div id="sources" class="sources"></div>
-      <p id="sourceError" class="msg msg--error" role="alert" hidden></p>
-      <p id="judgeNote" class="judgenote" hidden></p>
-      <div id="answerWarnings" class="warnings" hidden></div>
-      <div class="answer__actions">
-        <button id="newQuestion" class="btn btn--ghost">New question</button>
-        <button id="retry" class="btn btn--ghost" hidden>Retry</button>
-      </div>
-    </section>
+    </fieldset>
+
+    <p id="setupError" class="msg msg--error" role="alert" hidden></p>
+    <button id="setContext" class="btn btn--primary">SET CAR &amp; BEGIN JUDGING</button>
+    <button id="clearCar" class="linkbtn linkbtn--centred" hidden>Clear car details</button>
+  </section>
+
+  <!-- Question -->
+  <section id="questionCard" class="card card--question is-locked">
+    <label class="field">
+      <span class="field__label">Question</span>
+      <textarea id="question" rows="3" enterkeyhint="send" disabled
+        placeholder="Set the judging context first"></textarea>
+    </label>
+    <p id="nudge" class="msg msg--nudge" role="alert" hidden></p>
+    <button id="ask" class="btn btn--ghost" disabled>Ask</button>
+    <p id="lastQuestion" class="lastq" hidden></p>
+  </section>
+
+  <div id="loading" class="loading" hidden>
+    <span class="loading__dot"></span> Searching approved source documents…
   </div>
+
+  <!-- Answer -->
+  <section id="answerCard" class="card card--answer" hidden aria-live="polite">
+    <p id="statusLabel" class="status"></p>
+    <p id="answerText" class="answer"></p>
+    <div id="specBlock" class="block" hidden>
+      <p class="block__label">Correct specification</p>
+      <p id="specText" class="block__body"></p>
+    </div>
+    <div id="conflictBlock" class="block block--conflict" hidden>
+      <p class="block__label">What the sources disagree about</p>
+      <p id="conflictText" class="block__body"></p>
+    </div>
+    <p id="reasonText" class="reason" hidden></p>
+    <div id="sources" class="sources"></div>
+    <p id="sourceError" class="msg msg--error" role="alert" hidden></p>
+    <p id="judgeNote" class="judgenote" hidden></p>
+    <div id="answerWarnings" class="warnings" hidden></div>
+    <div class="answer__actions">
+      <button id="newQuestion" class="btn btn--ghost">New question</button>
+      <button id="retry" class="btn btn--ghost" hidden>Retry</button>
+    </div>
+  </section>
 </main>
 
 <!-- Source viewer -->

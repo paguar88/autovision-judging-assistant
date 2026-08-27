@@ -3,7 +3,7 @@
    question is answered fresh within the active car context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.3';
+const APP_VERSION = '2.0.4';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
@@ -251,7 +251,7 @@ async function openSource(documentId, page, title, origin = 'answer') {
   // threw here, which is why the viewer never appeared.
   const { ok, body } = await api(`/source/${encodeURIComponent(documentId)}/meta`);
   if (!ok || !body || typeof body.page_count !== 'number') {
-    text(errEl, 'That source document could not be opened. Try again.');
+    text(errEl, 'Source document could not be opened');
     show(errEl, true);
     return false;
   }

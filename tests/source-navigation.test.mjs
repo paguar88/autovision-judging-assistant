@@ -60,7 +60,7 @@ function route(url) {
 }
 
 const { issueSession } = await import(`${ROOT}/src/services/session.mjs`);
-const { default: source } = await import(`${ROOT}/netlify/functions/source.mjs`);
+const { default: source, config: sourceConfig } = await import(`${ROOT}/netlify/functions/source.mjs`);
 const cookie = issueSession().split(';')[0];
 
 /** Navigate as the browser would: build URL -> rewrite -> invoke the function. */
@@ -130,12 +130,81 @@ check('Back re-shows the library when that is where it came from', /back === 'do
 check('the library is hidden only after the document opens',
   /if \(await openSource\(d\.document_id[^)]*\)\) show\(\$\('docs'\), false\)/.test(appjs), true);
 check('a failed open reports rather than returning silently', /could not be opened/.test(appjs), true);
+check('error wording is exactly as specified',
+  /text\(errEl, 'Source document could not be opened'\)/.test(appjs), true);
+
+/* ---- DEPLOYED REQUEST SHAPE ----
+   The previous fix passed here while still failing live, because this test routed
+   URLs through a reimplementation of Netlify's rewrite and then handed the function a
+   REWRITTEN url carrying ?document_id=... In the deployed runtime the function sees
+   the URL the BROWSER asked for. `auth`, `ask` and `sources` are unaffected because
+   they read only the body and cookies; `source` was the one function that depended on
+   query parameters the rewrite was expected to inject.
+
+   These cases invoke the handler with the browser's own URL and no injected query. */
+async function navigateDeployed(browserUrl, { authenticated = true, params } = {}) {
+  const res = await source({
+    method: 'GET',
+    url: `https://site.netlify.app${browserUrl}`,       // exactly what the browser requested
+    headers: { get: (k) => (k === 'cookie' && authenticated ? cookie : null) },
+  }, params ? { params } : undefined);
+  const buf = Buffer.from(await res.arrayBuffer());
+  let json = null;
+  try { json = JSON.parse(buf.toString('utf8')); } catch { /* binary */ }
+  return {
+    status: res.status, contentType: res.headers.get('content-type'),
+    page: res.headers.get('x-source-page'),
+    isPdf: buf.subarray(0, 4).toString() === '%PDF', bytes: buf.length, json,
+  };
+}
+
+const dMeta = await navigateDeployed(`/source/${DOC}/meta`);
+check('deployed shape: metadata request succeeds',
+  [dMeta.status, dMeta.contentType, dMeta.json?.page_count], [200, 'application/json', 4]);
+
+const dPage2 = await navigateDeployed(`/source/${DOC}/page/2`);
+check('deployed shape: verified citation page 2 opens',
+  [dPage2.status, dPage2.page, dPage2.isPdf], [200, '2', true]);
+
+const dPage3 = await navigateDeployed(`/source/${DOC}/page/3`);
+check('deployed shape: verified citation page 3 opens',
+  [dPage3.status, dPage3.page, dPage3.isPdf], [200, '3', true]);
+check('deployed shape: body is real source content', dPage3.bytes > 10000, true);
+
+const dLib = await navigateDeployed(`/source/ferrari-330-gtc-gts-as-built/page/1`);
+check('deployed shape: library open at page 1 succeeds',
+  [dLib.status, dLib.page, dLib.isPdf], [200, '1', true]);
+
+const dBase = await navigateDeployed(`/source/${DOC}`);
+check('deployed shape: bare document URL defaults to page 1', [dBase.status, dBase.page], [200, '1']);
+
+// Framework-supplied params act as a fallback when the path carries no document.
+// (Path first is safe: with declared routes both derive from the same URL.)
+const dParams = await navigateDeployed('/.netlify/functions/source', { params: { documentId: DOC, page: '3' } });
+check('framework params are honoured when the path carries none',
+  [dParams.status, dParams.page], [200, '3']);
+const dPrecedence = await navigateDeployed(`/source/${DOC}/page/2`, { params: { documentId: DOC, page: '2' } });
+check('path and params agreeing resolves cleanly', [dPrecedence.status, dPrecedence.page], [200, '2']);
+
+// The legacy query form must keep working so the netlify.toml rules remain valid.
+const dQuery = await navigateDeployed(`/.netlify/functions/source?document_id=${DOC}&page=3`);
+check('legacy query form still resolves', [dQuery.status, dQuery.page], [200, '3']);
+
+check('the function declares its own routes', Array.isArray(sourceConfig?.path), true);
+check('declared routes cover citation, metadata and bare document',
+  sourceConfig.path.length, 3);
+
+const dNone = await navigateDeployed('/source');
+check('a request identifying no document reports the routing problem',
+  [dNone.status, dNone.json?.seen_path], [400, '/source']);
 
 /* ---- 6. Authentication ---- */
 const anon = await navigate(`/source/${DOC}/page/3`, { authenticated: false });
 check('unauthenticated source access is rejected', [anon.status, anon.isPdf], [401, false]);
 const anonMeta = await navigate(`/source/${DOC}/meta`, { authenticated: false });
 check('unauthenticated metadata access is rejected', anonMeta.status, 401);
+check('deployed shape: unauthenticated request is rejected',
+  (await navigateDeployed(`/source/${DOC}/page/3`, { authenticated: false })).status, 401);
 
 /* ---- 7. Invalid identifiers and pages ---- */
 check('unknown document id is rejected', (await navigate('/source/made-up-doc/page/1')).status, 404);
@@ -143,6 +212,11 @@ check('path traversal in the document id is rejected', (await navigate('/source/
 check('page beyond the document is rejected', (await navigate(`/source/${DOC}/page/999`)).status, 404);
 check('page zero is rejected', (await navigate(`/source/${DOC}/page/0`)).status, 404);
 check('non-numeric page is rejected', (await navigate(`/source/${DOC}/page/abc`)).status, 404);
+check('deployed shape: unknown document rejected', (await navigateDeployed('/source/made-up/page/1')).status, 404);
+check('deployed shape: page beyond document rejected', (await navigateDeployed(`/source/${DOC}/page/999`)).status, 404);
+check('deployed shape: page zero rejected', (await navigateDeployed(`/source/${DOC}/page/0`)).status, 404);
+check('deployed shape: traversal in document id rejected',
+  (await navigateDeployed('/source/..%2F..%2Fetc%2Fpasswd/page/1')).status, 404);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

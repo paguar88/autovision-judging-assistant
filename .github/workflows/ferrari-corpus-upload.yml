@@ -1,3 +1,10 @@
+# =============================================================================
+# Workflow Version: 1.1.0
+# Increment this whenever this file changes. It is echoed into the job summary so
+# a run can always be traced to the workflow revision that produced it.
+#   1.0.0  initial upload + retrieval test
+#   1.1.0  repository preflight; store verification step; version stamping
+# =============================================================================
 name: Ferrari Corpus Upload and Retrieval Test
 
 # Manual trigger ONLY. This workflow never runs on push, on pull request, or on a
@@ -41,7 +48,15 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      WORKFLOW_VERSION: "1.1.0"
     steps:
+      - name: Stamp workflow version
+        run: |
+          echo "Workflow Version: $WORKFLOW_VERSION"
+          echo "### Workflow Version \`$WORKFLOW_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Guard live writes
         if: inputs.mode == 'upload' && inputs.confirm != 'UPLOAD'
         run: |

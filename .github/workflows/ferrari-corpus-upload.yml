@@ -106,6 +106,13 @@ jobs:
           OPENAI_VECTOR_STORE_ID_FERRARI: ${{ secrets.OPENAI_VECTOR_STORE_ID_FERRARI }}
         run: npm run upload
 
+      - name: Verify vector store contents
+        if: inputs.mode == 'upload'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FERRARI: ${{ secrets.OPENAI_VECTOR_STORE_ID_FERRARI }}
+        run: npm run verify
+
       - name: Live retrieval test
         if: inputs.mode == 'upload' && inputs.run_retrieval_test
         env:
@@ -130,3 +137,4 @@ jobs:
             build/ferrari/document-manifest.json
             build/ferrari/upload-result.json
             build/ferrari/retrieval-result.json
+            build/ferrari/verify-result.json

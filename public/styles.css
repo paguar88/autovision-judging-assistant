@@ -1,4 +1,4 @@
-/* Concours Judging Assistant - app version 2.0.8 - v1.0 §24, Addendum A.13.
+/* Concours Judging Assistant - app version 2.0.9 - v1.0 §24, Addendum A.13.
    Outdoor readability first: high contrast, large targets, no web fonts (a judge on
    cellular beside a car should not wait on a font, or read a fallback flash).
    Marque marks are never used. Red is reserved for actions only, so it never doubles
@@ -86,8 +86,21 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 /* ---------- Context setup: the first action, and visibly so ---------- */
 .card--setup { border-top: 3px solid var(--ink); }
-.setup__title { font-size: 19px; margin: 0 0 4px; letter-spacing: -0.01em; }
-.setup__hint { color: var(--ink-soft); font-size: 14px; margin: 0 0 18px; }
+.setup__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 18px;
+}
+.setup__title {
+  font-size: 19px; margin: 0; letter-spacing: -0.01em;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Compact pair, never a full-width red bar. Set carries the emphasis. */
+.setup__actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.setup__actions .btn { min-width: 64px; }
+@media (max-width: 359px) {
+  .setup__title { font-size: 17px; }
+  .setup__actions .btn { min-width: 56px; padding: 0 10px; }
+}
 
 /* Year needs four digits; the model name needs the rest of the row. */
 .row--car { display: grid; grid-template-columns: 5.5rem 1fr; gap: 12px; align-items: start; }
@@ -115,9 +128,6 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 /* ---------- Question, locked until context exists ---------- */
 .card--question.is-locked { opacity: 0.55; }
-.card--question.is-locked .field__label::after {
-  content: " · locked"; color: var(--caution); letter-spacing: 0.06em;
-}
 textarea:disabled, input:disabled { background: var(--paper-warm); cursor: not-allowed; }
 
 /* ---------- Fields ---------- */

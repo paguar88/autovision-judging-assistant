@@ -147,13 +147,27 @@ check('the header carries the marque in uppercase', /wordmark__marque">FERRARI</
 check('Source Documents remains in the header', /id="openSources"/.test(html), true);
 check('the question field ships disabled', /id="question"[^>]*disabled/.test(html), true);
 check('the Ask button ships disabled', /id="ask"[^>]*disabled/.test(html), true);
-check('the primary setup action is the strong label', /SET CAR &amp; BEGIN JUDGING/.test(html), true);
+check('the setup panel is titled Judging Information', /setup__title">Judging Information</.test(html), true);
+check('Clear and Set sit in the panel header, Clear first',
+  html.indexOf('id="clearInfo"') < html.indexOf('id="setContext"')
+  && /setup__actions[\s\S]{0,240}id="setContext"/.test(html), true);
+check('Set carries the primary emphasis, Clear does not',
+  [/id="clearInfo"[^>]*btn--ghost/.test(html), /id="setContext"[^>]*btn--primary/.test(html)], [true, true]);
+check('both setup controls are compact, not full-width bars',
+  /id="clearInfo"[^>]*btn--sm/.test(html) && /id="setContext"[^>]*btn--sm/.test(html), true);
+check('the submit control reads SUBMIT QUESTION', />SUBMIT QUESTION</.test(html), true);
+check('the disabled question placeholder is short',
+  /placeholder="Set judging information first"/.test(html), true);
 check('year and model share a row', /class="row row--car"/.test(html) && /\.row--car \{ display: grid/.test(css), true);
 check('year is the narrow field', /grid-template-columns: 5\.5rem 1fr/.test(css), true);
 check('all four context controls exist',
   ['carYear', 'carModel', 'data-category', 'data-class'].every(k => html.includes(k)), true);
 check('the context header exposes a Change control', /id="changeContext"/.test(html), true);
 check('no external fonts are loaded', /fonts\.googleapis|@import|@font-face/.test(html + css), false);
+for (const gone of ['SET CAR &amp; BEGIN JUDGING', 'Clear car details', 'All four are required', 'Set the judging context']) {
+  check(`obsolete copy removed: "${gone}"`, html.includes(gone), false);
+}
+check('the locked suffix is gone from the question label', css.includes('· locked'), false);
 
 /* ---- 6. Client state rules ---- */
 const ctxFn = appjs.match(/function contextComplete\([\s\S]*?\n}/)[0];
@@ -177,8 +191,11 @@ check('Change reopens setup with current values populated',
   /state\.draft = \{ category: state\.category, concours_class: state\.car\.concours_class \}/.test(appjs), true);
 check('changing context clears the displayed answer and last question',
   /function openSetup\(\)[\s\S]*clearAnswer\(\)[\s\S]*lastQuestion/.test(appjs), true);
-check('the car can be cleared without disturbing area or class',
-  /id="clearCar"/.test(html) && /concours_class: state\.draft\.concours_class/.test(appjs), true);
+check('Clear resets the judging information fields',
+  /\$\('clearInfo'\)\.addEventListener/.test(appjs), true);
+// Clear only resets the draft; it must not silently establish or unestablish anything.
+const clearBody = appjs.match(/\$\('clearInfo'\)\.addEventListener\([\s\S]*?\n}\);/)[0];
+check('Clear does not change the established state', /state\.established/.test(clearBody), false);
 // Inspect the function body itself rather than guessing by proximity.
 const openSetupBody = appjs.match(/function openSetup\(\)[\s\S]*?\n}/)[0];
 check('Change is wired to reopen the setup panel',

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="app-version" content="2.0.8">
+<meta name="app-version" content="2.0.9">
 <title>Concours Judging Assistant</title>
 <link rel="stylesheet" href="/styles.css">
 </head>
@@ -41,9 +41,14 @@
   </section>
 
   <!-- Context setup: the first and only action until it is complete -->
-  <section id="setup" class="card card--setup" aria-label="Set judging context">
-    <h2 class="setup__title">Set the judging context</h2>
-    <p class="setup__hint">All four are required before you can ask a question.</p>
+  <section id="setup" class="card card--setup" aria-label="Judging information">
+    <div class="setup__head">
+      <h2 class="setup__title">Judging Information</h2>
+      <div class="setup__actions">
+        <button id="clearInfo" type="button" class="btn btn--ghost btn--sm">Clear</button>
+        <button id="setContext" type="button" class="btn btn--primary btn--sm">Set</button>
+      </div>
+    </div>
 
     <div class="row row--car">
       <label class="field field--year">
@@ -74,8 +79,6 @@
     </fieldset>
 
     <p id="setupError" class="msg msg--error" role="alert" hidden></p>
-    <button id="setContext" class="btn btn--primary">SET CAR &amp; BEGIN JUDGING</button>
-    <button id="clearCar" class="linkbtn linkbtn--centred" hidden>Clear car details</button>
   </section>
 
   <!-- Question -->
@@ -83,10 +86,10 @@
     <label class="field">
       <span class="field__label">Question</span>
       <textarea id="question" rows="3" enterkeyhint="send" disabled
-        placeholder="Set the judging context first"></textarea>
+        placeholder="Set judging information first"></textarea>
     </label>
     <p id="nudge" class="msg msg--nudge" role="alert" hidden></p>
-    <button id="ask" class="btn btn--ghost" disabled>Ask</button>
+    <button id="ask" class="btn btn--ghost" disabled>SUBMIT QUESTION</button>
     <p id="lastQuestion" class="lastq" hidden></p>
   </section>
 

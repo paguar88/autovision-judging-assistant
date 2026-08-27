@@ -3,7 +3,7 @@
    question is answered fresh within the active context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.8';
+const APP_VERSION = '2.0.9';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
@@ -82,7 +82,7 @@ function paintLock() {
   $('ask').className = on ? 'btn btn--primary' : 'btn btn--ghost';
   $('question').placeholder = on
     ? 'Are the knock-off spinners correct?'
-    : 'Set the judging context first';
+    : 'Set judging information first';
 }
 
 function paintContext() {
@@ -100,7 +100,6 @@ function openSetup() {
   paintChips();
   show($('contextBar'), false);
   show($('setup'), true);
-  show($('clearCar'), true);
   paintLock();
 }
 
@@ -139,12 +138,15 @@ function establish() {
 $('setContext').addEventListener('click', establish);
 $('changeContext').addEventListener('click', openSetup);
 
-// Clear the car without disturbing the judging area or class - the handoff case where
-// the same judge moves to the next vehicle.
-$('clearCar').addEventListener('click', () => {
+// Clear resets the Judging Information fields so the judge can start over. It does
+// not establish anything, so an already-established context stays in force until Set
+// is pressed again - the fields are a draft until then.
+$('clearInfo').addEventListener('click', () => {
   $('carYear').value = '';
   $('carModel').value = '';
-  state.car = { year: null, model: null, concours_class: state.draft.concours_class };
+  state.draft = { category: null, concours_class: null };
+  paintChips();
+  show($('setupError'), false);
   $('carYear').focus();
 });
 

@@ -96,8 +96,8 @@ check('its Back control hides the panel', /docsBack'\)\.addEventListener\('click
 check('the source viewer Back control hides the viewer', /viewerBack'\)\.addEventListener/.test(appjs), true);
 
 /* ---- version stamp ---- */
-check('app version is stamped in the markup', /name="app-version" content="2\.0\.8"/.test(html), true);
-check('app version is stamped in app.js', /APP_VERSION = '2\.0\.8'/.test(appjs), true);
+check('app version is stamped in the markup', /name="app-version" content="2\.0\.9"/.test(html), true);
+check('app version is stamped in app.js', /APP_VERSION = '2\.0\.9'/.test(appjs), true);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

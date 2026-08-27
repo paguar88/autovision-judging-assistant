@@ -3,7 +3,7 @@
    question is answered fresh within the active context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.11';
+const APP_VERSION = '2.0.12';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
@@ -350,6 +350,7 @@ function renderAnswer(a) {
   if (a.judge_note) text($('judgeNote'), a.judge_note);
 
   renderSources(a.sources || []);
+  renderReviewed(a.sources_reviewed || []);
 
   // Only judge-facing notices are rendered. Retrieval diagnostics stay in the payload.
   const warn = $('answerWarnings');
@@ -364,6 +365,37 @@ function renderAnswer(a) {
   show($('retry'), Boolean(a.retry));
   show($('answerCard'), true);
   $('answerCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+/** Pages that were checked but do not affirmatively support the answer. Deliberately
+    not a citation stamp: verification proves which physical page was retrieved, not
+    that the page answers the question. */
+function renderReviewed(reviewed) {
+  const wrap = $('reviewed');
+  const list = $('reviewedList');
+  list.replaceChildren();
+
+  reviewed.forEach(s => {
+    const li = document.createElement('li');
+    li.className = 'reviewed__item';
+
+    const label = document.createElement('span');
+    label.className = 'reviewed__title';
+    label.textContent = s.page_number ? `${s.display_title} · page ${s.page_number}` : s.display_title;
+    li.appendChild(label);
+
+    if (s.page_verified) {
+      const open = document.createElement('button');
+      open.className = 'reviewed__open';
+      open.textContent = 'View Source';
+      open.addEventListener('click', () => openSource(s.document_id, s.page_number || 1, s.display_title, 'answer'));
+      li.appendChild(open);
+    }
+    list.appendChild(li);
+  });
+
+  show(wrap, reviewed.length > 0);
 }
 
 function renderSources(sources) {

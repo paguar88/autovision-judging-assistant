@@ -9,6 +9,33 @@ import { buildCitation } from './citation-resolver.mjs';
 import { selectCitations } from './citation-selection.mjs';
 import { pruneRedundantFields } from './answer-presentation.mjs';
 
+/** Reviewed pages shown on a not-found result. Transparency, not a retrieval dump. */
+const MAX_REVIEWED = 2;
+
+
+/**
+ * Does the answer's opening clause state that the corpus does not contain the
+ * requested specification?
+ *
+ * The model self-reports its status, and it can report SUPPORTED while writing an
+ * honest not-found sentence. The prose is then true but the heading is wrong. This is
+ * a deterministic check on the FIRST sentence only, so a supported answer carrying a
+ * later caveat ("the documents do not state a maximum deduction") is unaffected.
+ *
+ * It never manufactures an answer - it only stops a negative one being dressed as
+ * positive.
+ */
+export function statesNotFound(answerText) {
+  const first = String(answerText || '').trim().split(/(?<=[.!?])\s+/)[0] || '';
+  return [
+    /\bdo(?:es)?\s+not\s+(?:specify|state|describe|indicate|address|cover|mention|provide|contain|define)\b/i,
+    /\b(?:is|are)\s+not\s+(?:specified|stated|described|addressed|covered|mentioned|defined)\b/i,
+    /\bno\s+(?:specification|information|guidance|detail|reference|mention|record)\b/i,
+    /\b(?:could|can)\s*not\s+(?:be\s+)?(?:find|found|locate|located|determine|determined)\b/i,
+    /\bnot\s+found\s+in\s+the\s+approved\b/i,
+  ].some(re => re.test(first));
+}
+
 /** Resolve retrieval results into verified citations. Model claims are ignored. */
 export function verifySources({ results, corpus: c }) {
   const citations = [];
@@ -83,6 +110,16 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     diagnostics.push('Supporting material was retrieved but no physical page could be verified for it, so the answer was withheld.');
   }
 
+  // A page being retrieved and page-verified does not make it evidence FOR the answer.
+  // When the answer itself says the corpus does not contain the requested
+  // specification, present that as a not-found result rather than a supported one.
+  if (stillSubstantive() && status !== 'CONFLICT' && statesNotFound(answer)) {
+    diagnostics.push(`Model reported ${parsed?.status}, but the answer states the documents do not contain the requested specification. Presented as NOT_FOUND.`);
+    status = 'NOT_FOUND';
+    correctSpecification = null;
+    reason = null;
+  }
+
   // A conflict must not be hidden behind a single-source SUPPORTED response.
   if (status === 'SUPPORTED') {
     const docs = new Set(sources.filter(s => s.page_verified).map(s => s.document_id));
@@ -107,6 +144,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     CONFLICT: 'Conflicting source information',
     INSUFFICIENT_INFO: 'Insufficient information',
     NO_SOURCE: 'No supporting source found',
+    NOT_FOUND: 'Not found in approved documents',
     NO_VERIFIED_PAGE: 'No verified source page',
     OUT_OF_SCOPE: 'Outside scope',
     ERROR: 'Could not complete the request',
@@ -114,6 +152,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
 
   const messages = {
     NO_SOURCE: 'I could not find a supported answer to this judging question in the approved source documents.',
+    NOT_FOUND: 'The approved documents reviewed do not specify this.',
     OUT_OF_SCOPE: 'This assistant answers questions from the approved judging documents. This question appears to be outside that scope.',
     INSUFFICIENT_INFO: 'The available information is not enough to support a sourced answer.',
     NO_VERIFIED_PAGE: 'Supporting material was found in the approved documents, but its exact page could not be verified. An answer is not shown without a verified source page. The documents are listed below.',
@@ -152,6 +191,17 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
       })
     : { correct_specification: correctSpecification, reason, suppressed: [] };
 
+  // For a not-found result the retrieved pages were REVIEWED, not relied on. They are
+  // offered as limited transparency about what was checked - never as the affirmative
+  // citation cards used for supporting evidence - and are capped so the judge is not
+  // handed a retrieval dump.
+  const notFoundLike = ['NOT_FOUND', 'NO_SOURCE'].includes(status);
+  const displayedSources = notFoundLike ? [] : selection.displayed;
+  const reviewed = notFoundLike ? verified.slice(0, MAX_REVIEWED) : [];
+  if (notFoundLike && verified.length > reviewed.length) {
+    diagnostics.push(`${verified.length} page(s) were reviewed; ${reviewed.length} shown.`);
+  }
+
   return {
     status,
     confidence_label: labels[status] || labels.ERROR,
@@ -164,7 +214,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     judge_note: judgeNote,
     car: car ? { year: car.year ?? null, model: car.model ?? null, concours_class: car.concours_class ?? null } : null,
     judging_category: category ?? null,
-    sources: selection.displayed.map(s => ({
+    sources: displayedSources.map(s => ({
       document_id: s.document_id,
       display_title: s.display_title,
       document_version: s.document_version,
@@ -173,6 +223,13 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
       page_verified: s.page_verified,
       also_contains_page: s.also_contains_page ?? null,
       resolution: s.resolution,
+      viewer_url: s.viewer_url,
+    })),
+    sources_reviewed: reviewed.map(s => ({
+      document_id: s.document_id,
+      display_title: s.display_title,
+      page_number: s.page_number,
+      page_verified: s.page_verified,
       viewer_url: s.viewer_url,
     })),
     sources_verified: verified.length,

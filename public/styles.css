@@ -1,4 +1,4 @@
-/* Concours Judging Assistant - app version 2.0.10 - v1.0 §24, Addendum A.13.
+/* Concours Judging Assistant - app version 2.0.12 - v1.0 §24, Addendum A.13.
    Outdoor readability first: high contrast, large targets, no web fonts (a judge on
    cellular beside a car should not wait on a font, or read a fallback flash).
    Marque marks are never used. Red is reserved for actions only, so it never doubles
@@ -138,6 +138,26 @@ textarea:disabled, input:disabled { background: var(--paper-warm); cursor: not-a
 input[inputmode="numeric"]::-webkit-outer-spin-button,
 input[inputmode="numeric"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[inputmode="numeric"] { -moz-appearance: textfield; appearance: textfield; }
+
+/* ---------- Sources reviewed (not-found results) ----------
+   Deliberately quieter than a citation stamp: no border, no verified badge, no red.
+   These pages were checked, not relied on. */
+.reviewed { margin-top: 16px; border-top: 1px solid var(--rule); padding-top: 12px; }
+.reviewed__label {
+  margin: 0 0 8px; color: var(--ink-soft);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+}
+.reviewed__list { list-style: none; margin: 0; padding: 0; }
+.reviewed__item {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
+  padding: 8px 0; font-size: 15px; line-height: 1.35; color: var(--ink-soft);
+}
+.reviewed__title { flex: 1 1 auto; min-width: 0; }
+.reviewed__open {
+  flex: 0 0 auto; background: none; border: 0; padding: 8px 0; min-height: 40px;
+  font: inherit; font-size: 15px; font-weight: 600; color: var(--ink);
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
 
 /* ---------- Session-only question history ---------- */
 .history { margin-top: 16px; border-top: 1px solid var(--rule); padding-top: 12px; }

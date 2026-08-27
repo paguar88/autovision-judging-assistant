@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="app-version" content="2.0.11">
+<meta name="app-version" content="2.0.12">
 <title>Concours Judging Assistant</title>
 <link rel="stylesheet" href="/styles.css">
 </head>
@@ -117,6 +117,10 @@
     </div>
     <p id="reasonText" class="reason" hidden></p>
     <div id="sources" class="sources"></div>
+    <div id="reviewed" class="reviewed" hidden>
+      <p class="reviewed__label">Sources reviewed</p>
+      <ul id="reviewedList" class="reviewed__list"></ul>
+    </div>
     <p id="sourceError" class="msg msg--error" role="alert" hidden></p>
     <p id="judgeNote" class="judgenote" hidden></p>
     <div id="answerWarnings" class="warnings" hidden></div>

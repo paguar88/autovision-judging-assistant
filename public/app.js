@@ -3,7 +3,7 @@
    question is answered fresh within the active context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.9';
+const APP_VERSION = '2.0.10';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);
@@ -14,6 +14,40 @@ const text = (el, s) => { el.textContent = s == null ? '' : String(s); };
     citation returns to the answer; one opened from the library returns to the list. */
 function nextViewOnBack(origin) { return origin === 'library' ? 'docs' : 'answer'; }
 
+/** Display-only capitalisation of the model. Tokens carrying a digit, and short
+    designations such as GTC or GTS, are upper-cased; longer words are title-cased so
+    "daytona" reads as "Daytona" rather than shouting. This never changes the model the
+    judge supplied and never substitutes a different one - alias normalisation remains
+    a separate, server-side, curated step (A.11). */
+function displayModel(model) {
+  return String(model || '').trim().split(/\s+/).filter(Boolean).map(tok =>
+    (/\d/.test(tok) || tok.length <= 4)
+      ? tok.toUpperCase()
+      : tok.charAt(0).toUpperCase() + tok.slice(1).toLowerCase()
+  ).join(' ');
+}
+
+/** History belongs to a car, identified by year and model. Judging area and class are
+    deliberately excluded, so switching Exterior to Interior keeps the list. */
+function carIdentity(car) {
+  return (car && car.year ? car.year : '') + '|' + String((car && car.model) || '').trim().toLowerCase();
+}
+
+/** Session-only. Reading a stored list for a different car yields nothing, which is how
+    a new car clears its history without a separate delete step. */
+function readHistory(carKey, store) {
+  try {
+    const raw = store.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.carKey === carKey && Array.isArray(parsed.items) ? parsed.items : [];
+  } catch { return []; }
+}
+
+function writeHistory(carKey, items, store) {
+  try { store.setItem(HISTORY_KEY, JSON.stringify({ carKey, items })); } catch { /* storage unavailable */ }
+}
+
 /** Judging context is established only when all four values are present. The server
     enforces the same rule, so a disabled control is a convenience, not the guard. */
 function contextComplete(ctx) {
@@ -21,8 +55,15 @@ function contextComplete(ctx) {
     && ctx.car.model && ctx.car.concours_class && ctx.category);
 }
 
+/** Session-only, browser-only. Never leaves the device and never enters an OpenAI
+    request: the judging payload is built from structured context plus the current
+    question alone (A.12). */
+const HISTORY_KEY = 'cja:question-history';
+const HISTORY_MAX = 25;
+
 const state = {
   established: false,
+  history: [],
   category: null,
   car: { year: null, model: null, concours_class: null },
   draft: { category: null, concours_class: null },
@@ -85,10 +126,33 @@ function paintLock() {
     : 'Set judging information first';
 }
 
+function paintHistory() {
+  const list = $('historyList');
+  list.replaceChildren();
+  state.history.forEach(entry => {
+    const li = document.createElement('li');
+    li.className = 'history__item';
+    const area = document.createElement('span');
+    area.className = 'history__area';
+    area.textContent = entry.category === 'Engine and Chassis' ? 'Engine & Chassis' : entry.category;
+    li.appendChild(area);
+    li.append(' \u00b7 ' + entry.question);     // text node: never rendered as HTML
+    list.appendChild(li);
+  });
+  text($('historySummary'), 'Questions for this car (' + state.history.length + ')');
+  show($('history'), state.history.length > 0);
+}
+
+function recordQuestion(question) {
+  state.history = state.history.concat([{ question, category: state.category }]).slice(-HISTORY_MAX);
+  writeHistory(carIdentity(state.car), state.history, window.sessionStorage);
+  paintHistory();
+}
+
 function paintContext() {
   const { year, model, concours_class } = state.car;
-  text($('carLabel'), `${year} Ferrari ${model} · ${concours_class}`);
-  text($('roleLabel'), `${state.category === 'Engine and Chassis' ? 'Engine & Chassis' : state.category} judge`);
+  text($('carLabel'), `${year} Ferrari ${displayModel(model)} · ${concours_class}`);
+  text($('roleLabel'), state.category === 'Engine and Chassis' ? 'Engine & Chassis' : state.category);
 }
 
 function openSetup() {
@@ -128,6 +192,11 @@ function establish() {
   state.category = candidate.category;
   state.established = true;
 
+  // A different car yields an empty list; the same car keeps its questions across a
+  // judging-area or class change.
+  state.history = readHistory(carIdentity(state.car), window.sessionStorage);
+  paintHistory();
+
   paintContext();
   show($('setup'), false);
   show($('contextBar'), true);
@@ -147,6 +216,10 @@ $('clearInfo').addEventListener('click', () => {
   state.draft = { category: null, concours_class: null };
   paintChips();
   show($('setupError'), false);
+  // Clearing the car identity clears that car's questions.
+  state.history = [];
+  writeHistory('', [], window.sessionStorage);
+  paintHistory();
   $('carYear').focus();
 });
 
@@ -217,6 +290,7 @@ async function ask() {
 
   text($('lastQuestion'), `Last question: ${question}`);
   show($('lastQuestion'), true);                // orientation only; never AI context
+  recordQuestion(question);                     // session-only, display only
   renderAnswer(body);
 }
 $('ask').addEventListener('click', ask);
@@ -287,7 +361,7 @@ function renderSources(sources) {
 
     const go = document.createElement('span');
     go.className = 'stamp__go';
-    go.textContent = s.page_verified ? 'View exact source' : 'Open document';
+    go.textContent = s.page_verified ? 'View Source' : 'Open document';
     btn.appendChild(go);
 
     btn.addEventListener('click', () => openSource(s.document_id, s.page_number || 1, s.display_title, 'answer'));
@@ -390,4 +464,5 @@ $('docsBack').addEventListener('click', () => show($('docs'), false));
   if (body?.authenticated) { show($('gate'), false); show($('app'), true); }
   paintChips();
   paintLock();
+  paintHistory();
 })();

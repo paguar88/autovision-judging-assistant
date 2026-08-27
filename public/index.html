@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="app-version" content="2.0.9">
+<meta name="app-version" content="2.0.10">
 <title>Concours Judging Assistant</title>
 <link rel="stylesheet" href="/styles.css">
 </head>
@@ -53,7 +53,8 @@
     <div class="row row--car">
       <label class="field field--year">
         <span class="field__label">Year</span>
-        <input id="carYear" type="number" inputmode="numeric" min="1940" max="2030" placeholder="1967" enterkeyhint="next">
+        <input id="carYear" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"
+               autocomplete="off" placeholder="1967" enterkeyhint="next">
       </label>
       <label class="field field--model">
         <span class="field__label">Model</span>
@@ -91,6 +92,11 @@
     <p id="nudge" class="msg msg--nudge" role="alert" hidden></p>
     <button id="ask" class="btn btn--ghost" disabled>SUBMIT QUESTION</button>
     <p id="lastQuestion" class="lastq" hidden></p>
+
+    <details id="history" class="history" hidden>
+      <summary id="historySummary" class="history__summary">Questions for this car</summary>
+      <ul id="historyList" class="history__list"></ul>
+    </details>
   </section>
 
   <div id="loading" class="loading" hidden>

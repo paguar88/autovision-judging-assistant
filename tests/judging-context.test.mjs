@@ -48,9 +48,11 @@ const chunkOf = (id) => {
 const result = (id, score) => ({ attributes: { unit_id: id }, text: chunkOf(id), score });
 
 let openAICalls = 0;
+let lastOpenAIRequest = null;
 function stub(results, answer) {
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (url, init) => {
     openAICalls++;
+    lastOpenAIRequest = init && init.body ? JSON.parse(init.body) : null;
     return new Response(JSON.stringify({
       output: [
         { type: 'file_search_call', results },
@@ -204,6 +206,79 @@ check('reopening the context never clears year or model',
   /carYear|carModel|state\.car =/.test(openSetupBody), false);
 check('reopening the context does clear the answer',
   /clearAnswer\(\)/.test(openSetupBody), true);
+
+
+/* ---- 7. Session-only question history never reaches OpenAI ---- */
+// Re-issue the spinner request so the captured payload is the one under test.
+await askLive(FULL);
+const sent = JSON.stringify(lastOpenAIRequest);
+check('the OpenAI request carries the current question', /knock-off spinners/.test(sent), true);
+check('it carries the structured judging context',
+  ['1967', '330 GTC', 'Regular', 'Exterior'].every(v => sent.includes(v)), true);
+check('it carries no history, thread or prior-turn field',
+  /history|previous|prior|conversation|messages"\s*:/.test(sent), false);
+check('only one user turn is sent', lastOpenAIRequest.input.length, 1);
+
+// The client payload the browser builds must contain no history either.
+const askBody = appjs.match(/const payload = \{[\s\S]*?\};/)[0];
+check('the client request payload is question plus context only',
+  /const payload = \{ question, judging_category: state\.category, car: state\.car \};/.test(askBody), true);
+check('history is not referenced anywhere in the request payload',
+  /history/.test(askBody), false);
+
+/* ---- history lifecycle, executing the shipped functions ---- */
+const src = (name) => appjs.match(new RegExp(`function ${name}\\([\\s\\S]*?\\n}`))[0];
+const H = new Function(`${src('carIdentity')}; ${src('readHistory')}; ${src('writeHistory')};
+  const HISTORY_KEY='cja:question-history';
+  return { carIdentity, readHistory, writeHistory };`)();
+
+const fakeStore = (() => { let v = {}; return { getItem: k => v[k] ?? null, setItem: (k, s) => { v[k] = s; } }; })();
+const car = { year: '1967', model: '330 GTC', concours_class: 'Regular' };
+H.writeHistory(H.carIdentity(car), [{ question: 'Are the knock-off spinners correct?', category: 'Exterior' }], fakeStore);
+
+check('history is keyed on year and model only',
+  H.carIdentity(car), H.carIdentity({ year: '1967', model: '330 GTC', concours_class: 'Preservation' }));
+check('changing judging area keeps the history',
+  H.readHistory(H.carIdentity(car), fakeStore).length, 1);
+check('changing class keeps the history',
+  H.readHistory(H.carIdentity({ ...car, concours_class: 'Preservation' }), fakeStore).length, 1);
+check('model case does not fragment the history',
+  H.readHistory(H.carIdentity({ ...car, model: '330 gtc' }), fakeStore).length, 1);
+check('a different car has no history',
+  H.readHistory(H.carIdentity({ year: '1972', model: '365 GTB/4' }), fakeStore).length, 0);
+check('a different year has no history',
+  H.readHistory(H.carIdentity({ ...car, year: '1968' }), fakeStore).length, 0);
+check('Clear wipes the stored history', (() => {
+  H.writeHistory('', [], fakeStore);
+  return H.readHistory(H.carIdentity(car), fakeStore).length;
+})(), 0);
+check('storage is session-only', /window\.sessionStorage/.test(appjs) && !/localStorage/.test(appjs), true);
+check('no answers are stored, only question and area',
+  /\{ question, category: state\.category \}/.test(appjs), true);
+check('history offers no re-submit control', /historyList[\s\S]{0,600}addEventListener/.test(appjs), false);
+
+/* ---- display normalisation ---- */
+const displayModel = new Function(`${src('displayModel')}; return displayModel;`)();
+check('lower-case entry displays as a designation', displayModel('330 gtc'), '330 GTC');
+check('mixed entry normalises', displayModel('330 GtC'), '330 GTC');
+check('a word-style model is title-cased, not shouted', displayModel('daytona'), 'Daytona');
+check('designations with a slash survive', displayModel('365 gtb/4'), '365 GTB/4');
+check('the model sent to the server stays as typed',
+  /car: state\.car/.test(appjs) && !/state\.car\.model = displayModel/.test(appjs), true);
+
+/* ---- wording and controls ---- */
+check('the source link reads View Source', /'View Source'/.test(appjs), true);
+check('the old wording is gone', /View exact source/.test(appjs), false);
+check('the judging area label drops the word judge',
+  /text\(\$\('roleLabel'\), state\.category === 'Engine and Chassis'/.test(appjs), true);
+check('Year is a text entry, not a number spinner',
+  /id="carYear" type="text"/.test(html) && !/id="carYear"[^>]*type="number"/.test(html), true);
+check('Year takes a numeric keypad and four characters',
+  /id="carYear"[\s\S]{0,120}inputmode="numeric"[\s\S]{0,120}maxlength="4"/.test(html), true);
+check('Set is visually dominant over Clear',
+  /#setContext \{ min-width: 124px/.test(css) && /#clearInfo \{ min-width: 62px/.test(css), true);
+check('the two controls are separated', /\.setup__actions \{ display: flex; align-items: center; gap: 18px/.test(css), true);
+check('history is collapsed by default', /<details id="history"/.test(html) && !/<details id="history"[^>]*open/.test(html), true);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

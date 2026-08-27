@@ -1,0 +1,112 @@
+name: Ferrari Corpus Upload and Retrieval Test
+
+# Manual trigger ONLY. This workflow never runs on push, on pull request, or on a
+# schedule, because it writes to a live OpenAI vector store. Nothing here touches
+# the deployed site: it does not build, deploy, or alter the Netlify application.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run plans the upload without writing. upload writes to the vector store."
+        type: choice
+        required: true
+        default: dry-run
+        options: [dry-run, upload]
+      confirm:
+        description: "Type UPLOAD to authorise a live write. Ignored for dry-run."
+        type: string
+        required: false
+        default: ""
+      question:
+        description: "Retrieval test question."
+        type: string
+        required: false
+        default: "On a 1967 330 GTC, what wheels and knock-off spinners are correct?"
+      run_retrieval_test:
+        description: "Run the live retrieval test after upload."
+        type: boolean
+        required: false
+        default: true
+
+# Never let two runs write to the same vector store at once.
+concurrency:
+  group: ferrari-vector-store
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Guard live writes
+        if: inputs.mode == 'upload' && inputs.confirm != 'UPLOAD'
+        run: |
+          echo "::error::mode=upload requires confirm=UPLOAD. Nothing was written."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Stage 1 is regenerated rather than committed. Ingestion is deterministic:
+      # identical sources produce byte-identical slices and artifacts, so this
+      # reproduces the accepted Stage 1 output exactly. Logic is unchanged.
+      - name: Regenerate Stage 1 artifacts
+        run: npm run ingest
+
+      - name: Verify ingestion is not blocked
+        run: |
+          STATUS=$(node -p "require('./build/ferrari/ingestion-report.json').status")
+          ERRORS=$(node -p "require('./build/ferrari/ingestion-report.json').blocking_errors.length")
+          echo "ingestion status: $STATUS  blocking errors: $ERRORS"
+          if [ "$ERRORS" != "0" ]; then echo "::error::Ingestion reported blocking errors. Upload refused."; exit 1; fi
+
+      - name: Citation chain regression test
+        run: npm run test:citations
+
+      - name: Plan upload (dry run)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FERRARI: ${{ secrets.OPENAI_VECTOR_STORE_ID_FERRARI }}
+        run: npm run upload:dry
+
+      - name: Upload retrieval units to the Ferrari vector store
+        if: inputs.mode == 'upload'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FERRARI: ${{ secrets.OPENAI_VECTOR_STORE_ID_FERRARI }}
+        run: npm run upload
+
+      - name: Live retrieval test
+        if: inputs.mode == 'upload' && inputs.run_retrieval_test
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_VECTOR_STORE_ID_FERRARI: ${{ secrets.OPENAI_VECTOR_STORE_ID_FERRARI }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        run: node scripts/retrieval-test.mjs "${{ inputs.question }}"
+
+      - name: Build milestone report
+        if: always()
+        run: node scripts/milestone-report.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attach result artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferrari-stage1-results
+          retention-days: 14
+          path: |
+            build/ferrari/ingestion-report.json
+            build/ferrari/document-manifest.json
+            build/ferrari/upload-result.json
+            build/ferrari/retrieval-result.json

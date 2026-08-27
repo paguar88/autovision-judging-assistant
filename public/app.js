@@ -3,6 +3,9 @@
    question is answered fresh within the active car context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
+const APP_VERSION = '2.0.1';
+console.info(`Concours Judging Assistant ${APP_VERSION}`);
+
 const $ = (id) => document.getElementById(id);
 const show = (el, on = true) => { el.hidden = !on; };
 const text = (el, s) => { el.textContent = s == null ? '' : String(s); };

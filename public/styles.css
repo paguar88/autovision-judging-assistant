@@ -1,4 +1,4 @@
-/* Concours Judging Assistant - v1.0 §24, Addendum A.13.
+/* Concours Judging Assistant - app version 2.0.1 - v1.0 §24, Addendum A.13.
    Outdoor readability first: high contrast, large targets, no web fonts (a judge on
    cellular beside a car should not wait on a font, or read a fallback flash).
    Marque marks are never used. Red is reserved for actions only, so it never doubles
@@ -21,6 +21,14 @@
 }
 
 * { box-sizing: border-box; }
+
+/* The HTML `hidden` attribute is enforced only by the user-agent stylesheet, which
+   ALWAYS loses to author CSS regardless of specificity. Any rule here that sets
+   `display` on an element the interface toggles with `hidden` would silently keep
+   that element on screen. `.viewer` did exactly that, leaving the Source Documents
+   panel fixed over the whole page from first paint and making Back inert.
+   This restores `hidden` as the single source of truth for visibility. */
+[hidden] { display: none !important; }
 
 html, body {
   margin: 0;

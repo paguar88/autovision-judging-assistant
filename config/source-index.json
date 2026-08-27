@@ -1,0 +1,97 @@
+{
+  "_comment": "CURATOR-OWNED INPUT (Addendum A.2 Tier 2, A.8). This file is an editorial artifact, not a generated one. Ingestion VALIDATES this metadata against the corpus; it must never DECIDE it. The generated counterpart is build/<brand>/document-manifest.json, which ingestion writes.",
+  "schema_version": "1.0",
+  "brand": "ferrari",
+  "corpus_status": "development",
+  "corpus_status_note": "Development/test corpus assembled by Autovision Studios from publicly available IAC/PFA material for pipeline validation. Supersession, authority and precedence relationships below are RECORDED AS OBSERVED, not decided by Autovision. The Ferrari Judging Committee supplies and approves the production corpus (A.8).",
+  "curator": "Autovision Studios",
+  "last_updated": "2026-08-26",
+  "documents": [
+    {
+      "document_id": "iacpfa-judging-guidelines",
+      "filename": "iac_pfa_judging_guidelines__.pdf",
+      "display_title": "IAC/PFA Judging Guidelines",
+      "document_version": "1 December 2015",
+      "version_normalized": "2015-12-01",
+      "publication_date": "2015-12-01",
+      "effective_year": 2015,
+      "source_organization": "IAC/PFA",
+      "source_type": "judging_guidelines",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Publicly published IAC/PFA judging guidelines. Development corpus only; Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [
+        "ferrari-330-gtc-gts-checklist",
+        "ferrari-330-gtc-gts-as-built"
+      ],
+      "declared_cross_references": [],
+      "display_description": "IAC/PFA concours judging guidelines covering judging philosophy, team structure, the 100-point scoring basis, deduction range, award thresholds, and eligibility of replacement and safety items.",
+      "notes": "Establishes the 100-point start and the 0-5 point per-component deduction range at judge discretion. Foundational to the deduction presentation model in Addendum A.1."
+    },
+    {
+      "document_id": "ferrari-330-gtc-gts-checklist",
+      "filename": "330-GTC-GTS-Concours-Judging-Checklist-VER-1.pdf",
+      "display_title": "330 GTC/GTS Concours Judging Checklist",
+      "document_version": "VER 1",
+      "version_normalized": "1",
+      "publication_date": null,
+      "effective_year": null,
+      "source_organization": "IAC/PFA",
+      "source_type": "model_checklist",
+      "scope": "model_specific",
+      "models_covered": ["330 GTC", "330 GTS"],
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Publicly available IAC/PFA model checklist. Development corpus only; Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [
+        "ferrari-330-gtc-gts-as-built",
+        "iacpfa-judging-guidelines"
+      ],
+      "declared_cross_references": [
+        {
+          "target_document_id": "ferrari-330-gtc-gts-as-built",
+          "required_version": "8.0",
+          "required_publication": "July 2023",
+          "reference_kind": "page_reference_index",
+          "note": "Checklist line items carry trailing page numbers that index into the As-Built document. Page attribution depends on the referenced version being exactly 8.0."
+        }
+      ],
+      "display_description": "Observation checklist of major Exterior, Interior, and Engine and Chassis items reviewed when a 330 GTC or GTS is judged in an IAC/PFA concours. Each item carries a reference page number into the As-Built document.",
+      "notes": "Establishes what is CORRECT for a component. Attaches no point value - see Addendum A.1."
+    },
+    {
+      "document_id": "ferrari-330-gtc-gts-as-built",
+      "filename": "330-GTC-GTS-As-Built-Configuration-and-Judging-Notes-Document-Version-8_0-July-2023.pdf",
+      "display_title": "330 GTC/GTS As-Built Configuration, Authenticity, and Judging Notes",
+      "document_version": "8.0",
+      "version_normalized": "8.0",
+      "publication_date": "2023-07-01",
+      "effective_year": 2023,
+      "source_organization": "IAC/PFA",
+      "source_type": "as_built_reference",
+      "scope": "model_specific",
+      "models_covered": ["330 GTC", "330 GTS"],
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Stated by the 330 GTC/GTS Concours Judging Checklist to be readable and downloadable from IACPFA.org. Development corpus only; Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [
+        "ferrari-330-gtc-gts-checklist",
+        "iacpfa-judging-guidelines"
+      ],
+      "declared_cross_references": [],
+      "display_description": "Photographic and descriptive reference to how 330 GTC and GTS cars were originally built, covering exterior, interior, and engine and chassis configuration, authenticity, and judging notes.",
+      "notes": "Large image-heavy document. Exceeds the page-slice delivery threshold; slices required per Addendum A.7."
+    }
+  ]
+}

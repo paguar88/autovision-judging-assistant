@@ -1,0 +1,27 @@
+{
+  "name": "autovision-judging-assistant",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "ingest": "node scripts/ingest.mjs --brand ferrari",
+    "ingest:no-slices": "node scripts/ingest.mjs --brand ferrari --skip-slices",
+    "upload": "node scripts/upload-vector-store.mjs --brand ferrari",
+    "upload:dry": "node scripts/upload-vector-store.mjs --brand ferrari --dry-run",
+    "test:citations": "node tests/citation-chain.test.mjs",
+    "retrieval:test": "node scripts/retrieval-test.mjs",
+    "report": "node scripts/milestone-report.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "type": "module",
+  "private": true
+}

@@ -1,0 +1,33 @@
+{
+  "_comment": "Brand configuration. Addendum A.3 / A.13. Ferrari is the first implementation, not a hard-coded assumption. Secrets are never stored here - only the NAME of the environment variable holding them.",
+  "default_brand": "ferrari",
+  "brands": {
+    "ferrari": {
+      "brand_id": "ferrari",
+      "display_name": "Ferrari",
+      "product_name": "Concours Judging Assistant",
+      "logo_asset": "/public/autovision-studios-logo.svg",
+      "marque_marks_permitted": false,
+      "vector_store_env_var": "OPENAI_VECTOR_STORE_ID_FERRARI",
+      "source_index": "config/source-index.json",
+      "score_sheet_mappings": "config/score-sheet-mappings.json",
+      "model_aliases": "config/model-aliases.json",
+      "judging_categories": ["Exterior", "Interior", "Engine and Chassis"],
+      "concours_classes": ["Regular", "Preservation"],
+      "openai_model_env_var": "OPENAI_MODEL",
+      "transcription_model_env_var": "OPENAI_TRANSCRIPTION_MODEL",
+      "feedback_recipient_env_var": "FEEDBACK_RECIPIENT",
+      "beta_password_env_var": "BETA_PASSWORD",
+      "feature_flags": {
+        "photo": true,
+        "voice": true,
+        "ask_about_source": false,
+        "history": false,
+        "event_db": false,
+        "deduction_arithmetic": false
+      },
+      "corpus_status": "development",
+      "corpus_status_note": "Development/test corpus. NOT the Ferrari Judging Committee approved production corpus. Per Addendum A.8, the Committee provides and approves the production set."
+    }
+  }
+}

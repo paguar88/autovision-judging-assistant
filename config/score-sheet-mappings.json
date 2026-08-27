@@ -1,0 +1,14 @@
+{
+  "_comment": "CURATED (Addendum A.2 Tier 2, A.10). Component -> score-sheet line -> maximum deduction. Ingestion must NEVER generate entries here.",
+  "schema_version": "1.0",
+  "brand": "ferrari",
+  "mapping_key": "brand + judging_category + component",
+  "status": "EMPTY - INTENTIONAL",
+  "status_reason": "The current development corpus contains no IAC/PFA score sheet. The IAC/PFA Judging Guidelines establish the 100-point basis and a 0-5 point per-component deduction range at judge discretion, but define no score-sheet line items and no per-line maximum deductions. Per A.10, a maximum deduction may never appear alone and an unmapped component means both fields are omitted. Until a score sheet is supplied and mappings are curated, the assistant can present Correct Specification only - never Applicable Score Sheet Line, never Maximum Deduction.",
+  "required_to_populate": [
+    "IAC/PFA Exterior score sheet",
+    "IAC/PFA Interior score sheet",
+    "IAC/PFA Engine and Chassis score sheet"
+  ],
+  "mappings": []
+}

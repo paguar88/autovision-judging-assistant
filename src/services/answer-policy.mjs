@@ -6,6 +6,7 @@
  */
 
 import { buildCitation } from './citation-resolver.mjs';
+import { selectCitations } from './citation-selection.mjs';
 
 /** Resolve retrieval results into verified citations. Model claims are ignored. */
 export function verifySources({ results, corpus: c }) {
@@ -29,7 +30,7 @@ export function verifySources({ results, corpus: c }) {
     const probe = buildCitation({ unit, excerpt: r.text, manifestDoc: doc, sliceExists: true });
     const slice = c.sliceExists(unit.document_id, probe.page_number);
     const cite = buildCitation({ unit, excerpt: r.text, manifestDoc: doc, sliceExists: slice });
-    citations.push({ ...cite, score: r.score ?? null, lookup });
+    citations.push({ ...cite, score: r.score ?? null, lookup, primary_text: unit.primary_text });
   }
 
   // Deduplicate by document + page, keeping the strongest score.
@@ -117,6 +118,23 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     NO_VERIFIED_PAGE: 'Supporting material was found in the approved documents, but its exact page could not be verified. An answer is not shown without a verified source page. The documents are listed below.',
   };
 
+  // Presentation only, and deliberately last: status is already settled above, so
+  // narrowing the displayed list can never change the verdict or trip the
+  // no-verified-page fail-safe.
+  const selection = stillSubstantive()
+    ? selectCitations({
+        citations: sources,
+        answerText: [answer, correctSpecification, parsed?.conflict_note].filter(Boolean).join(' '),
+        quote: parsed?.supporting_quote ?? null,
+        category,
+        status,
+      })
+    : { displayed: sources, suppressed: [], reason: 'not a substantive answer' };
+
+  if (selection.suppressed.length) {
+    warnings.push(`${selection.suppressed.length} further verified page(s) were retrieved but did not add support beyond those shown.`);
+  }
+
   return {
     status,
     confidence_label: labels[status] || labels.ERROR,
@@ -128,7 +146,7 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
     judge_note: judgeNote,
     car: car ? { year: car.year ?? null, model: car.model ?? null, concours_class: car.concours_class ?? null } : null,
     judging_category: category ?? null,
-    sources: sources.map(s => ({
+    sources: selection.displayed.map(s => ({
       document_id: s.document_id,
       display_title: s.display_title,
       document_version: s.document_version,
@@ -140,6 +158,9 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
       viewer_url: s.viewer_url,
     })),
     sources_verified: verified.length,
+    sources_displayed: selection.displayed.length,
+    sources_suppressed: selection.suppressed.length,
+    selection_reason: selection.reason,
     sources_rejected: rejected.length,
     instrumentation: { duration_ms, model, path: 'text_only' },
     warnings,

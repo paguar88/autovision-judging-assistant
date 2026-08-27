@@ -90,7 +90,7 @@ console.log(`      ask-function bundle: ${readdirSync(path.join(BUNDLE, 'build/f
 
 /* ---- 1. The live case must produce verified physical pages ---- */
 stubOpenAI([
-  { attributes: { unit_id: 'ferrari-330-gtc-gts-checklist:p3' }, text: unitFile('ferrari-330-gtc-gts-checklist:p3'), score: 0.92 },
+  { attributes: { unit_id: 'ferrari-330-gtc-gts-checklist:p2' }, text: unitFile('ferrari-330-gtc-gts-checklist:p2'), score: 0.92 },
   { attributes: { unit_id: 'ferrari-330-gtc-gts-as-built:p59' }, text: unitFile('ferrari-330-gtc-gts-as-built:p59'), score: 0.81 },
 ], SUPPORTED_ANSWER);
 
@@ -99,13 +99,15 @@ const live = await askLive(REQUEST);
 check('status is SUPPORTED', live.status, 'SUPPORTED');
 check('every returned source is page-verified',
   live.sources.map(s => s.page_verified), [true, true]);
-check('checklist resolves to physical page 3 (Stage 1 baseline)',
+// Page 2 is the Exterior section, which is where the wheel and spinner requirement
+// actually lives. Page 3 is Interior and would rightly be filtered out.
+check('checklist resolves to physical page 2, the Exterior wheel/spinner page',
   [live.sources[0].document_id, live.sources[0].page_number, live.sources[0].resolution],
-  ['ferrari-330-gtc-gts-checklist', 3, 'RESOLVED_PRIMARY']);
+  ['ferrari-330-gtc-gts-checklist', 2, 'RESOLVED_PRIMARY']);
 check('As-Built resolves to physical page 59 (Stage 1 baseline)',
   [live.sources[1].document_id, live.sources[1].page_number], ['ferrari-330-gtc-gts-as-built', 59]);
 check('View Exact Source receives the verified page route',
-  live.sources[0].viewer_url, '/source/ferrari-330-gtc-gts-checklist/page/3');
+  live.sources[0].viewer_url, '/source/ferrari-330-gtc-gts-checklist/page/2');
 check('no "page could not be verified" warning is raised', live.warnings, []);
 check('no deduction is stated (A.1)', live.deduction.applicable, false);
 check('no score-sheet line or maximum (A.10)',
@@ -115,7 +117,7 @@ check('no score-sheet line or maximum (A.10)',
 // Text that appears verbatim on no page: the resolver must suppress, and the policy
 // must withhold the answer rather than present it under "Page not verified".
 stubOpenAI([
-  { attributes: { unit_id: 'ferrari-330-gtc-gts-checklist:p3' }, text: 'Paraphrased material that appears verbatim nowhere in the approved corpus.', score: 0.9 },
+  { attributes: { unit_id: 'ferrari-330-gtc-gts-checklist:p2' }, text: 'Paraphrased material that appears verbatim nowhere in the approved corpus.', score: 0.9 },
 ], SUPPORTED_ANSWER);
 
 const unverified = await askLive(REQUEST);

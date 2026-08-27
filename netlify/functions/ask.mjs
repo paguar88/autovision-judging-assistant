@@ -89,7 +89,11 @@ export default async (request) => {
       warnings.push('No exact page could be verified for these sources. The document is cited without a page.');
     }
 
-    return json(applyPolicy({ parsed, sources, verified, rejected, duration_ms, model, car, category, warnings }));
+    return json(applyPolicy({
+      parsed, sources, verified, rejected, duration_ms, model, car, category, warnings,
+      question,
+      corpusTexts: c.units.map(u => u.primary_text),   // frozen corpus, for term salience
+    }));
   } catch (e) {
     const timedOut = e.name === 'AbortError';
     return json({

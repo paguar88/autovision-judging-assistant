@@ -53,7 +53,7 @@ export function verifySources({ results, corpus: c }) {
  * Apply the policy. Returns the payload the frontend renders.
  * Never lets unsupported answer text reach the judge.
  */
-export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, model, car, category, warnings = [] }) {
+export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, model, car, category, question = '', corpusTexts = [], warnings = [] }) {
   let status = parsed?.status || 'ERROR';
   let answer = parsed?.answer ?? null;
   let reason = parsed?.reason ?? null;
@@ -124,8 +124,9 @@ export function applyPolicy({ parsed, sources, verified, rejected, duration_ms, 
   const selection = stillSubstantive()
     ? selectCitations({
         citations: sources,
+        question,
         answerText: [answer, correctSpecification, parsed?.conflict_note].filter(Boolean).join(' '),
-        quote: parsed?.supporting_quote ?? null,
+        corpusTexts,
         category,
         status,
       })

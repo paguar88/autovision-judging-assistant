@@ -56,11 +56,15 @@ function stubOpenAI(results, answer) {
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 
+// Deliberately relies on facts from BOTH pages - the checklist states the spinner
+// requirement, and the #32 / 10-hole / Borrani Hand details exist only in the
+// As-Built notes - so this exercises multi-source plumbing rather than a case
+// citation selection would rightly reduce to one page.
 const SUPPORTED_ANSWER = {
   status: 'SUPPORTED',
-  answer: 'Borrani wire wheels take angled three-eared spinners; Campagnolo disc wheels take straight three-eared spinners.',
+  answer: 'Borrani wire wheels take an angled, 3 eared, #32 chrome knockoff; the Campagnolo 10-hole cast alloy disk takes a square ended knockoff. A Borrani Hand design centre was not original.',
   reason: 'Both the checklist and the As-Built notes describe the correct knock-off styles.',
-  correct_specification: 'Both styles carry a prancing horse in the centre of the spinner.',
+  correct_specification: 'Angled ear spinners on Borrani RW 4039, straight ear spinners on the Campagnolo disk wheel.',
   supporting_quote: 'chrome knockoff with a prancing',
   conflict_note: null,
 };
@@ -98,7 +102,8 @@ const live = await askLive(REQUEST);
 
 check('status is SUPPORTED', live.status, 'SUPPORTED');
 check('every returned source is page-verified',
-  live.sources.map(s => s.page_verified), [true, true]);
+  live.sources.every(s => s.page_verified), true);
+check('both supporting documents are displayed', live.sources.length, 2);
 // Page 2 is the Exterior section, which is where the wheel and spinner requirement
 // actually lives. Page 3 is Interior and would rightly be filtered out.
 check('checklist resolves to physical page 2, the Exterior wheel/spinner page',

@@ -159,6 +159,64 @@ check('conflict status is preserved', conflict.status, 'CONFLICT');
 check('no suppression warning is raised on a conflict',
   /did not add support/.test(conflict.warnings.join(' ')), false);
 
+/* ---- DETERMINISM ACROSS REPEATED IDENTICAL REQUESTS ----
+   The same question, vehicle context, category and corpus must produce the same
+   judge-facing citation set even though the model phrases the answer differently
+   each run. v2.0.5 keyed off answer wording, so a more detailed paraphrase could
+   flip the set - and could even displace the checklist page that directly states
+   the specification. */
+const DUPLICATIVE = [
+  'Borrani wire wheels take angled ear spinners; Campagnolo disks take straight ear spinners, both with a horse in the center.',
+  'Borrani wire wheels should carry angled three-eared knock-off spinners; Campagnolo disk wheels straight-eared. Both have a prancing horse in the centre.',
+  'Yes, if the spinner style matches the wheel type.',
+  'Wheels are 14x7 or 14x6.5 Borrani RW 4039 with angled ear spinners, or 14 inch Campagnolo disk with straight ear spinner.',
+  'The correct configuration is an angled ear spinner on the Borrani RW 4039 wire wheel and a straight ear spinner on the Campagnolo disk wheel, each bearing a Horse at the centre.',
+  'The spinners are correct when angled on Borrani and straight on Campagnolo, with the horse emblem centred.',
+];
+
+const outcomes = [];
+for (const prose of DUPLICATIVE) {
+  stub(OVER_RETRIEVED, { ...SPINNER_ANSWER, answer: prose, correct_specification: null });
+  const r = await askLive(REQUEST);
+  outcomes.push(r.sources.map(s => `${s.document_id}#${s.page_number}`).join(','));
+}
+check('six paraphrases of the same answer give one citation set', new Set(outcomes).size, 1);
+check('and that set is the checklist page that states the specification',
+  outcomes[0], 'ferrari-330-gtc-gts-checklist#2');
+
+// Retrieval order and relevance scores must not move the result either.
+const shuffles = [
+  [OVER_RETRIEVED[1], OVER_RETRIEVED[0], OVER_RETRIEVED[2]],
+  [{ ...OVER_RETRIEVED[0], score: 0.4 }, { ...OVER_RETRIEVED[1], score: 0.99 }],
+  OVER_RETRIEVED.slice().reverse(),
+];
+const shuffleOutcomes = [];
+for (const set of shuffles) {
+  stub(set, { ...SPINNER_ANSWER, answer: DUPLICATIVE[0], correct_specification: null });
+  const r = await askLive(REQUEST);
+  shuffleOutcomes.push(r.sources.map(s => `${s.document_id}#${s.page_number}`).join(','));
+}
+check('retrieval order and scores do not change the primary source',
+  new Set(shuffleOutcomes).size === 1 && shuffleOutcomes[0].startsWith('ferrari-330-gtc-gts-checklist#2'), true);
+
+/* ---- a supplementary page appears only for facts the primary page lacks ---- */
+const ASBUILT_RELIANT = [
+  'The Borrani RW4039 takes an angled, 3 eared, #32 chrome knockoff with a prancing horse. A knockoff with the Borrani Hand design in the centre was not an original configuration. The Campagnolo is a 10-hole cast alloy with a square ended knockoff.',
+  'Angled 3 eared #32 knockoffs on the Borrani; the Campagnolo 10 hole cast alloy takes a square ended knockoff. The Borrani Hand design knockoff was never original.',
+  'Correct spinners are the #32 angled 3 eared type for Borrani and the square ended type for the 10-hole Campagnolo cast alloy wheel. A Borrani Hand design centre is not original.',
+];
+const deepOutcomes = [];
+for (const prose of ASBUILT_RELIANT) {
+  stub(OVER_RETRIEVED, { ...SPINNER_ANSWER, answer: prose, correct_specification: null });
+  const r = await askLive(REQUEST);
+  deepOutcomes.push(r.sources.map(s => `${s.document_id}#${s.page_number}`).join(','));
+}
+check('answers relying on As-Built-only facts add that page, stably', new Set(deepOutcomes).size, 1);
+check('and the checklist page is still retained as primary',
+  deepOutcomes[0], 'ferrari-330-gtc-gts-checklist#2,ferrari-330-gtc-gts-as-built#59');
+check('the primary source is never displaced by a longer supporting page',
+  deepOutcomes[0].split(',')[0], 'ferrari-330-gtc-gts-checklist#2');
+
 /* ---- selection never fabricates or promotes an unverified page ---- */
 stub([{ attributes: { unit_id: 'ferrari-330-gtc-gts-checklist:p2' }, text: 'Text appearing verbatim nowhere.', score: 0.9 }], SPINNER_ANSWER);
 const unverifiable = await askLive(REQUEST);

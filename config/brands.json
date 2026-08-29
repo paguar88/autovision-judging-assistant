@@ -33,8 +33,8 @@
         "event_db": false,
         "deduction_arithmetic": false
       },
-      "corpus_status": "development",
-      "corpus_status_note": "Development/test corpus. NOT the Ferrari Judging Committee approved production corpus. Per Addendum A.8, the Committee provides and approves the production set."
+      "corpus_status": "beta_candidate",
+      "corpus_status_note": "Beta candidate. The expanded 16-document corpus is prepared LOCALLY and is NOT deployed: it has not been ingested to or uploaded into the live production vector store, which is unchanged and still serves the existing 330 GTC/GTS beta. NOT the Ferrari Judging Committee approved production corpus - per Addendum A.8, the Committee provides and approves the production set."
     },
     "ferrari-test": {
       "_comment": [

@@ -146,21 +146,46 @@ console.log('\n=== CITATION CHAIN MACHINERY TEST ===\n');
     [c5.page_number, c5.page_verified, c5.document_id],
     [null, false, 'ferrari-330-gtc-gts-as-built']);
 
-  // Every one of the 155 units must resolve from its own uploaded file.
-  const unresolved = units.filter(u => {
+  // Self-verification splits on whether a page carries extractable text.
+  //
+  // A text-bearing unit must verify to its OWN physical page: that is the citation
+  // guarantee the product rests on.
+  //
+  // An image-only page has no primary_text, so there is nothing for the resolver to
+  // match. Such a unit may legitimately resolve to its preceding overlap-origin page
+  // or suppress the page number entirely - both are honest. What it must never do is
+  // report page_verified for its own page, because that would assert textual support
+  // on a page that contains none. Requiring all 591 to self-verify would have forced
+  // exactly that false claim on the 36 image-only pages.
+  //
+  // Counts are asserted alongside the outcomes so a corpus that silently shrank, or
+  // one whose text/image split moved, cannot pass with nothing left to verify.
+  const textBearing = units.filter(u => (u.primary_text || '').trim() !== '');
+  const blank = units.filter(u => (u.primary_text || '').trim() === '');
+
+  const textUnresolved = textBearing.filter(u => {
     const r = cite(u.unit_id, unitFile(u));
     return !(r.page_verified && r.page_number === u.page_number);
   });
-  check('all 155 units resolve to their own page from their own uploaded file', unresolved.length, 0);
+  const blankSelfVerified = blank.filter(u => {
+    const r = cite(u.unit_id, unitFile(u));
+    return r.page_verified && r.page_number === u.page_number;
+  });
+
+  check('every text-bearing unit verifies to its own page; image-only units never claim theirs',
+    [units.length, textBearing.length, textUnresolved.length, blank.length, blankSelfVerified.length],
+    [591, 555, 0, 36, 0]);
 }
 
-// 8. Every unit's declared page exists in its document and has a slice.
+// 8. Every unit's declared page exists in its document and has a slice. This holds
+//    for image-only pages too: they are still deliverable pages with real slices.
 {
   const broken = units.filter(u => {
     const d = docOf(u.document_id);
     return !d || u.page_number < 1 || u.page_number > d.page_count || !sliceFor(u.document_id, u.page_number);
   });
-  check('all 155 units have an in-range page with a generated slice', broken.length, 0);
+  check('all 591 units have an in-range page with a generated slice',
+    [units.length, broken.length], [591, 0]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

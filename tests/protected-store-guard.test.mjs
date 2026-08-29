@@ -134,46 +134,86 @@ test('source_path falls back to filename for flat corpora', () => {
     'production entries declare no source_path and must still resolve');
 });
 
-test('production source index declares no source_path, so it takes the filename branch', () => {
-  for (const d of json('config/source-index.json').documents) {
+test('the three legacy production files stay flat, taking the filename branch', () => {
+  const legacy = ['iacpfa-judging-guidelines', 'ferrari-330-gtc-gts-checklist', 'ferrari-330-gtc-gts-as-built'];
+  for (const d of json('config/source-index.json').documents.filter(x => legacy.includes(x.document_id))) {
     assert.equal(d.source_path, undefined, `${d.document_id} unexpectedly declares source_path`);
+    assert.ok(d.filename, `${d.document_id} lost its filename`);
   }
 });
 
-// ---- 6. Batch 1 index integrity ---------------------------------------------
-test('batch index exists with 16 approved documents', () => {
-  const d = json('config/source-index-batch1.json');
+test('every declared source_path is relative and stays under approved-source-docs', () => {
+  // A path that escapes the corpus directory would let the index address arbitrary
+  // files on the host, so this is a containment check, not a tidiness one.
+  for (const d of json('config/source-index.json').documents) {
+    const rel = d.source_path;
+    if (rel === undefined) continue;
+    assert.ok(typeof rel === 'string' && rel.length > 0, `${d.document_id}: empty source_path`);
+    assert.ok(!path.isAbsolute(rel) && !/^[A-Za-z]:/.test(rel), `${d.document_id}: absolute path`);
+    assert.ok(!rel.includes('\\'), `${d.document_id}: backslash separator`);
+    assert.ok(!rel.split('/').includes('..'), `${d.document_id}: path escapes the corpus`);
+    const resolved = path.resolve(ROOT, 'approved-source-docs', rel);
+    assert.ok(resolved.startsWith(path.resolve(ROOT, 'approved-source-docs') + path.sep),
+      `${d.document_id}: resolves outside approved-source-docs`);
+  }
+});
+
+// ---- 6. Production candidate integrity --------------------------------------
+const STABLE_IDS = ['iacpfa-judging-guidelines', 'ferrari-330-gtc-gts-checklist', 'ferrari-330-gtc-gts-as-built'];
+// The Batch 1 index carried its own longer ids for the same three documents.
+// Promoting those would break every citation route already issued against the
+// live beta, so the candidate must keep the stable ids and drop these.
+const REPLACED_IDS = [
+  'ferrari-iac-pfa-judging-guidelines',
+  'ferrari-330-gtc-gts-as-built-configuration-and-judging-notes-document-version-8',
+  'ferrari-330-gtc-gts-concours-judging-checklist-ver-1',
+];
+
+test('the production candidate holds exactly 16 active, approved documents', () => {
+  const d = json('config/source-index.json');
   assert.equal(d.documents.length, 16);
   for (const doc of d.documents) {
     assert.equal(doc.redistribution_status, 'approved', `${doc.document_id} not approved`);
+    assert.equal(doc.active, true, `${doc.document_id} not active`);
   }
 });
 
-test('batch document ids are unique and well formed', () => {
-  const ids = json('config/source-index-batch1.json').documents.map(d => d.document_id);
+test('the three stable production ids survive promotion', () => {
+  const ids = json('config/source-index.json').documents.map(d => d.document_id);
+  for (const id of STABLE_IDS) assert.ok(ids.includes(id), `lost stable id: ${id}`);
+});
+
+test('their longer Batch 1 replacements are absent', () => {
+  // Scanning the SERIALIZED index, not just the document ids: a discarded id can
+  // also survive in _flags, related_documents, declared_cross_references or any
+  // other audit field, and a stale reference there points at a document that no
+  // longer exists in the corpus.
+  const raw = read('config/source-index.json');
+  for (const id of REPLACED_IDS) {
+    assert.ok(!raw.includes(id), `discarded replacement id still present somewhere in the index: ${id}`);
+  }
+});
+
+test('the other 13 Batch 1 documents are present', () => {
+  const ids = new Set(json('config/source-index.json').documents.map(d => d.document_id));
+  const expected = json('config/source-index-batch1.json').documents
+    .map(d => d.document_id).filter(id => !REPLACED_IDS.includes(id));
+  assert.equal(expected.length, 13);
+  for (const id of expected) assert.ok(ids.has(id), `missing promoted document: ${id}`);
+});
+
+test('candidate document ids are unique and well formed', () => {
+  const ids = json('config/source-index.json').documents.map(d => d.document_id);
   assert.equal(new Set(ids).size, ids.length, 'duplicate document_id');
   for (const id of ids) assert.ok(/^[a-z0-9-]+$/.test(id) && !id.endsWith('-'), `malformed id: ${id}`);
 });
 
-test('batch and production document ids do not collide', () => {
-  const p = new Set(json('config/source-index.json').documents.map(d => d.document_id));
-  for (const id of json('config/source-index-batch1.json').documents.map(d => d.document_id)) {
-    assert.ok(!p.has(id), `id collides with production: ${id}`);
-  }
-});
-
-test('the two excluded documents stay excluded', () => {
-  const d = json('config/source-index-batch1.json');
-  const paths = d.documents.map(x => x.source_path);
-  assert.ok(!paths.includes('330 GTC/iac_pfa_judging_guidelines__.pdf'), 'duplicate guidelines was ingested');
-  assert.ok(!paths.includes('599 GTB/Ferrari-Performance-HGTE-95993268.pdf'), 'image-only scan was ingested');
-  assert.equal(d._excluded_from_batch.length, 2);
-});
-
-test('599 GTB has no ingested document', () => {
-  const d = json('config/source-index-batch1.json');
-  assert.ok(!d.documents.some(x => (x.source_path || '').startsWith('599 GTB/')),
-    '599 GTB must remain unsupported');
+test('the duplicate guidelines and the 599 GTB scan stay excluded', () => {
+  const d = json('config/source-index.json');
+  const paths = d.documents.map(x => x.source_path).filter(Boolean);
+  assert.ok(!paths.includes('330 GTC/iac_pfa_judging_guidelines__.pdf'), 'duplicate guidelines was promoted');
+  assert.ok(!paths.some(x => x.startsWith('599 GTB/')), 'the image-only 599 GTB scan was promoted');
+  assert.equal(d._excluded.length, 2);
 });
 
 test('430 Scuderia is variant-scoped and never a plain F430 source', () => {

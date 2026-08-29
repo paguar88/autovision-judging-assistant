@@ -347,9 +347,12 @@ check('an alias reaches the same coverage and still reports the matched alias',
   [resolveModel('F430 Scuderia', 'ferrari-test').model_coverage,
    resolveModel('F430 Scuderia', 'ferrari-test').matched_alias],
   ['430 Scuderia', 'F430 Scuderia']);
-check('both production 330 records resolve to the shared corpus coverage',
-  [resolveModel('330 GTC').model_coverage, resolveModel('330 GTS').model_coverage],
-  ['330 GTC/GTS', '330 GTC/GTS']);
+check('every supported production model maps to its exact curated coverage value',
+  ['330 GTC', '330 GTS', '458 Italia', 'F430', '430 Scuderia', 'F8 Tributo', 'GTC4Lusso T']
+    .map(m => [m, resolveModel(m).model_coverage]),
+  [['330 GTC', '330 GTC/GTS'], ['330 GTS', '330 GTC/GTS'], ['458 Italia', '458 Italia'],
+   ['F430', 'F430'], ['430 Scuderia', '430 Scuderia'], ['F8 Tributo', 'F8 Tributo'],
+   ['GTC4Lusso T', 'GTC4Lusso T']]);
 check('the disabled 330 GTC/GTS bridge stays unresolvable despite valid coverage',
   resolveModel('330 GTC/GTS', 'ferrari-test').resolved, false);
 

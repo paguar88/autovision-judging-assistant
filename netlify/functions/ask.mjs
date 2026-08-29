@@ -77,6 +77,21 @@ export default async (request) => {
     // designation: for 330 GTC the two deliberately differ, and the designation
     // is prompt context while coverage is destined for the retrieval filter.
     modelCoverage = resolved.model_coverage;
+    // Fail closed. A model can be recognised by the alias table yet have no
+    // curated retrieval coverage. Continuing would send an UNFILTERED request,
+    // so the judge could receive a fully sourced answer drawn from another
+    // model's documents - the exact failure this product exists to prevent.
+    // No value is derived, normalized or substituted: absent coverage is a
+    // curation gap, and the honest response is to decline.
+    if (typeof modelCoverage !== 'string' || modelCoverage.trim() === '') {
+      return json({
+        status: 'MODEL_NOT_COVERED',
+        code: 'MODEL_COVERAGE_NOT_CONFIGURED',
+        confidence_label: 'Model not covered',
+        message: 'Approved source coverage is not currently configured for this model.',
+        car,
+      });
+    }
     if (resolved.matched_alias) {
       warnings.push(`"${resolved.matched_alias}" was read as ${resolved.canonical_model_name}.`);
     }

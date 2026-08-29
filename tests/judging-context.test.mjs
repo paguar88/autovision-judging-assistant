@@ -151,9 +151,9 @@ check('the judge-facing interface renders only warnings',
   /\(a\.warnings \|\| \[\]\)\.forEach/.test(appjs) && !/diagnostics/.test(appjs.split('renderAnswer')[1] || ''), true);
 
 /* ---- 4. Judge-relevant notices are still shown ---- */
-const alias = await askLive({ ...FULL, car: { year: '1990', model: 'Daytona', concours_class: 'Regular' } });
+const alias = await askLive({ ...FULL, car: { year: '1990', model: '330 spyder', concours_class: 'Regular' } });
 check('alias normalisation is still surfaced to the judge',
-  alias.body.warnings.some(w => /Daytona/.test(w)), true);
+  alias.body.warnings.some(w => /330 spyder/.test(w)), true);
 check('a year outside the configured range is still surfaced',
   alias.body.warnings.some(w => /outside the approved year range/.test(w)), true);
 
@@ -347,8 +347,9 @@ check('an alias reaches the same coverage and still reports the matched alias',
   [resolveModel('F430 Scuderia', 'ferrari-test').model_coverage,
    resolveModel('F430 Scuderia', 'ferrari-test').matched_alias],
   ['430 Scuderia', 'F430 Scuderia']);
-check('the production alias table carries no coverage, and none is invented',
-  resolveModel('330 GTC').model_coverage, null);
+check('both production 330 records resolve to the shared corpus coverage',
+  [resolveModel('330 GTC').model_coverage, resolveModel('330 GTS').model_coverage],
+  ['330 GTC/GTS', '330 GTC/GTS']);
 check('the disabled 330 GTC/GTS bridge stays unresolvable despite valid coverage',
   resolveModel('330 GTC/GTS', 'ferrari-test').resolved, false);
 
@@ -382,6 +383,21 @@ check('matching is exact, so a variant is never reached through its family',
    buildFileSearchTool('vs_x', 5, 'F430').filters.filters[1].value,
    buildFileSearchTool('vs_x', 5, '430 Scuderia').filters.filters.some(f => f.key === 'model_family')],
   ['430 Scuderia', 'F430', false]);
+
+/* ---- Slice 4: fail closed when a recognised model has no curated coverage ----
+   365 GTB/4 is deliberately seeded without model_coverage. It resolves as a model
+   but has no approved corpus, so retrieval must be declined rather than run
+   unfiltered - an unfiltered request could answer a Daytona question from another
+   model's documents with every citation verifying correctly. */
+const callsBeforeGap = openAICalls;
+const gap = await askLive({ ...FULL, car: { year: '1970', model: '365 GTB/4', concours_class: 'Regular' } });
+
+check('an uncovered model returns HTTP 200 with MODEL_NOT_COVERED and the coverage-specific code',
+  [gap.status, gap.body.status, gap.body.code],
+  [200, 'MODEL_NOT_COVERED', 'MODEL_COVERAGE_NOT_CONFIGURED']);
+check('the message names the missing approved source coverage',
+  /Approved source coverage is not currently configured/.test(gap.body.message), true);
+check('and no OpenAI request was made', openAICalls, callsBeforeGap);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

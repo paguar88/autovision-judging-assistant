@@ -225,5 +225,48 @@ check('deployed shape: page zero rejected', (await navigateDeployed(`/source/${D
 check('deployed shape: traversal in document id rejected',
   (await navigateDeployed('/source/..%2F..%2Fetc%2Fpasswd/page/1')).status, 404);
 
+/* ---- Slice 2: reviewed sources label with the printed page, route with the physical ----
+   The label and the destination are deliberately allowed to differ: the judge reads
+   the number printed on the page, the viewer opens the physical sheet that carries
+   it. Rather than pattern-matching the source, the real expression is lifted out of
+   public/app.js and executed, so these assertions fail if the shipped wording or the
+   fallback changes. */
+const renderReviewedSrc = appjs.slice(appjs.indexOf('function renderReviewed'));
+const labelExpr = renderReviewedSrc.match(
+  /const pageWords = ([\s\S]*?);\n\s*label\.textContent = ([\s\S]*?);/);
+check('renderReviewed builds its label from printed_page_number with a physical fallback',
+  Boolean(labelExpr), true);
+
+const reviewedLabel = new Function('s', `
+  const pageWords = ${labelExpr[1]};
+  return ${labelExpr[2]};
+`);
+
+check('a mapped reviewed source displays its printed page',
+  reviewedLabel({ display_title: '458 Italia Carrozzeria Scaglietti', page_number: 17, printed_page_number: 18 }),
+  '458 Italia Carrozzeria Scaglietti · printed page 18');
+
+check('an unmapped reviewed source keeps the existing physical-page wording',
+  [reviewedLabel({ display_title: '330 GTC/GTS Concours Judging Checklist', page_number: 2, printed_page_number: null }),
+   reviewedLabel({ display_title: '330 GTC/GTS Concours Judging Checklist', page_number: 2 })],
+  ['330 GTC/GTS Concours Judging Checklist · page 2',
+   '330 GTC/GTS Concours Judging Checklist · page 2']);
+
+check('a reviewed source with no page still shows the title alone',
+  reviewedLabel({ display_title: 'IAC/PFA Judging Guidelines', page_number: null }),
+  'IAC/PFA Judging Guidelines');
+
+check('the reviewed View Source action passes the physical page, never the printed one',
+  [/openSource\(s\.document_id,\s*s\.page_number \|\| 1,/.test(renderReviewedSrc),
+   /openSource\([^)]*printed_page_number/.test(renderReviewedSrc)],
+  [true, false]);
+
+// The affirmative citation badge from the earlier correction must be untouched.
+check('the affirmative citation badge still splits on printed_page_number and routes physically',
+  [/Verified · \$\{s\.printed_page_number != null \? `printed page \$\{s\.printed_page_number\}` : `page \$\{s\.page_number\}`\}/.test(appjs),
+   /\/source\/\$\{encodeURIComponent\(documentId\)\}\/page\/\$\{page\}/.test(appjs),
+   /\/page\/\$\{printed/.test(appjs)],
+  [true, true, false]);
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

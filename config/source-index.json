@@ -419,6 +419,13 @@
       "models_covered": [
         "458 Italia"
       ],
+      "printed_page_ranges": [
+        {
+          "physical_start": 3,
+          "physical_end": 34,
+          "printed_start": 4
+        }
+      ],
       "model_family": "458",
       "brand": "ferrari",
       "redistribution_status": "approved",
@@ -550,6 +557,13 @@
       "scope": "model_specific",
       "models_covered": [
         "430 Scuderia"
+      ],
+      "printed_page_ranges": [
+        {
+          "physical_start": 6,
+          "physical_end": 136,
+          "printed_start": 4
+        }
       ],
       "model_family": "F430",
       "brand": "ferrari",

@@ -15,6 +15,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validatePrintedPageRanges } from '../src/services/printed-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -75,6 +76,15 @@ for (const d of idx.documents) {
       B('UNGUARDED_HEADER_FIELD',
         `ingest.mjs no longer guards ${f}; a null would be written into retrieval units as the text "null"`);
     }
+  }
+}
+
+// ---- Printed page mapping (curator-owned, Tier 2) ---------------------------
+// An invalid mapping is blocking, not advisory: a bad range would attach a wrong
+// printed number to a verified citation, which is worse than having none.
+for (const d of idx.documents) {
+  for (const e of validatePrintedPageRanges(d.printed_page_ranges, { declaredPageCount: d.declared_page_count })) {
+    B('INVALID_PRINTED_PAGE_RANGE', `${d.document_id}: ${e}`);
   }
 }
 

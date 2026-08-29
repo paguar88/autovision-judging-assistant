@@ -12,6 +12,21 @@ const text = (el, s) => { el.textContent = s == null ? '' : String(s); };
 
 /** Where Back goes from the source viewer. Pure and testable: a source opened from a
     citation returns to the answer; one opened from the library returns to the list. */
+// Mirror of src/services/printed-pages.mjs printedPageFor. This file is served to
+// the browser and cannot import from src/services; the logic is a pure lookup over
+// curated ranges supplied by the server, never a calculation of its own.
+function printedPageFor(physicalPage, ranges) {
+  if (!Array.isArray(ranges) || !Number.isInteger(physicalPage)) return null;
+  for (const r of ranges) {
+    if (!r || !Number.isInteger(r.physical_start) || !Number.isInteger(r.physical_end)
+        || !Number.isInteger(r.printed_start)) continue;
+    if (physicalPage >= r.physical_start && physicalPage <= r.physical_end) {
+      return r.printed_start + (physicalPage - r.physical_start);
+    }
+  }
+  return null;
+}
+
 function nextViewOnBack(origin) { return origin === 'library' ? 'docs' : 'answer'; }
 
 /** Display-only capitalisation of the model. Tokens carrying a digit, and short
@@ -379,7 +394,14 @@ function renderReviewed(reviewed) {
 
     const label = document.createElement('span');
     label.className = 'reviewed__title';
-    label.textContent = s.page_number ? `${s.display_title} · page ${s.page_number}` : s.display_title;
+    // Same split as the affirmative citation badge: the judge reads the number
+    // printed on the page when the curator has mapped one. The View Source action
+    // below still passes s.page_number, so the label changes and the destination
+    // does not.
+    const pageWords = s.printed_page_number != null
+      ? `printed page ${s.printed_page_number}`
+      : `page ${s.page_number}`;
+    label.textContent = s.page_number ? `${s.display_title} · ${pageWords}` : s.display_title;
     li.appendChild(label);
 
     if (s.page_verified) {
@@ -406,7 +428,12 @@ function renderSources(sources) {
     const badge = document.createElement('span');
     badge.className = 'stamp__page';
     // Status is carried in words, never colour alone (v1.0 §24).
-    badge.textContent = s.page_verified ? `Verified · page ${s.page_number}` : 'Page not verified';
+    // The badge shows the PRINTED page when one is configured, because that is the
+    // number the judge sees on the paper. The link below still targets the physical
+    // page, so the label changes and the destination does not.
+    badge.textContent = s.page_verified
+      ? `Verified · ${s.printed_page_number != null ? `printed page ${s.printed_page_number}` : `page ${s.page_number}`}`
+      : 'Page not verified';
     btn.appendChild(badge);
 
     const title = document.createElement('span');
@@ -449,7 +476,10 @@ async function openSource(documentId, page, title, origin = 'answer') {
 
   const pageCount = body.page_count;
   const target = Math.min(Math.max(parseInt(page, 10) || 1, 1), pageCount);
-  state.viewer = { documentId, page: target, pageCount, title: title || body.display_title, origin };
+  // printed_page_ranges is curated metadata used for LABELS only. Navigation and
+  // the source route continue to use physical pages exclusively.
+  state.viewer = { documentId, page: target, pageCount, title: title || body.display_title, origin,
+    printedRanges: Array.isArray(body.printed_page_ranges) ? body.printed_page_ranges : null };
   text($('viewerTitle'), state.viewer.title);
   paintViewer();
   show($('viewer'), true);
@@ -457,11 +487,15 @@ async function openSource(documentId, page, title, origin = 'answer') {
 }
 
 function paintViewer() {
-  const { documentId, page, pageCount } = state.viewer;
+  const { documentId, page, pageCount, printedRanges } = state.viewer;
+  // Physical page only: a printed number must never reach the source route.
   const url = `/source/${encodeURIComponent(documentId)}/page/${page}`;
   $('viewerFrame').src = url;
   $('viewerOpen').href = url;
-  text($('pageLabel'), `Page ${page} of ${pageCount}`);
+  const printed = printedPageFor(page, printedRanges);
+  text($('pageLabel'), printed != null
+    ? `Printed page ${printed} · PDF page ${page} of ${pageCount}`
+    : `Page ${page} of ${pageCount}`);
   $('prevPage').disabled = page <= 1;
   $('nextPage').disabled = page >= pageCount;
 }

@@ -251,5 +251,85 @@ console.log('\n=== CITATION CHAIN MACHINERY TEST ===\n');
     /verifySources\(\{[\s\S]*?supportingQuote:\s*parsed\.supporting_quote[\s\S]*?\}\)/.test(askjs), true);
 }
 
+// 10. Citation Repair Slice 2: printed document pages vs physical PDF pages.
+//
+//     A PDF's physical order and the numbers PRINTED on its pages are different
+//     facts. The 458 brochure prints "4" on its third sheet. page_number and every
+//     viewer URL stay physical, because that is what opens the right sheet;
+//     printed_page_number rides alongside for the label the judge reads.
+//
+//     Nothing here is inferred: the mapping is curator-owned, the resolver never
+//     computes a printed page, and an unmapped document reports null.
+{
+  const { printedPageFor, validatePrintedPageRanges } = await import('../src/services/printed-pages.mjs');
+  const R458 = [{ physical_start: 3, physical_end: 34, printed_start: 4 }];
+  const R430 = [{ physical_start: 6, physical_end: 136, printed_start: 4 }];
+
+  check('458 physical page 17 maps to printed page 18, and 430 physical 51 to printed 49',
+    [printedPageFor(17, R458), printedPageFor(51, R430)], [18, 49]);
+
+  check('pages outside a range, and documents with no mapping, report null',
+    [printedPageFor(2, R458), printedPageFor(137, R430), printedPageFor(2, null)],
+    [null, null, null]);
+
+  check('invalid and overlapping mappings are rejected',
+    [ validatePrintedPageRanges('nope', { declaredPageCount: 34 }).length > 0,
+      validatePrintedPageRanges([{ physical_start: -1, physical_end: 5, printed_start: 1 }], { declaredPageCount: 34 }).length > 0,
+      validatePrintedPageRanges([{ physical_start: 10, physical_end: 4, printed_start: 1 }], { declaredPageCount: 34 }).length > 0,
+      validatePrintedPageRanges([{ physical_start: 3, physical_end: 99, printed_start: 4 }], { declaredPageCount: 34 }).length > 0,
+      validatePrintedPageRanges([{ physical_start: 3, physical_end: 10, printed_start: 4 },
+                                 { physical_start: 8, physical_end: 12, printed_start: 20 }], { declaredPageCount: 34 }).length > 0,
+      validatePrintedPageRanges(R458, { declaredPageCount: 34 }).length === 0 ],
+    [true, true, true, true, true, true]);
+
+  // Evidence originating in the previous page's overlap must report the ORIGIN
+  // page in both systems: physical 17 and printed 18, opening /page/17.
+  const u18 = unitOf('ferrari-330-gtc-gts-as-built:p18');
+  const mapped = {
+    ...u18,
+    printed_page_number: printedPageFor(u18.page_number, R458),
+    overlap_origin_printed_page: printedPageFor(u18.overlap_origin_page, R458),
+  };
+  const cMapped = {
+    unitById: new Map([[mapped.unit_id, mapped]]),
+    unitByFile: new Map(),
+    docById: new Map(manifest.map(d => [d.document_id, d])),
+    sliceExists: (docId, page) => sliceFor(docId, page),
+  };
+  const overlapSrc = verifySources({
+    results: [{ attributes: { unit_id: mapped.unit_id }, text: `${u18.overlap_span}\n${u18.primary_text}`, score: 1 }],
+    corpus: cMapped,
+    supportingQuote: u18.overlap_span.split('\n')[0].trim(),
+  }).sources[0];
+  check('overlap evidence returns physical 17, printed 18, and a viewer URL on the physical page',
+    [overlapSrc.page_number, overlapSrc.printed_page_number, overlapSrc.viewer_url],
+    [17, 18, `/source/${u18.document_id}/page/17`]);
+
+  // The 330 documents carry no mapping, so their citations must be untouched.
+  const c330 = {
+    unitById: new Map(units.map(u => [u.unit_id, u])),
+    unitByFile: new Map(units.map(u => [u.unit_file, u])),
+    docById: new Map(manifest.map(d => [d.document_id, d])),
+    sliceExists: (docId, page) => sliceFor(docId, page),
+  };
+  const u1 = unitOf('ferrari-330-gtc-gts-checklist:p2');
+  const plain = verifySources({
+    results: [{ attributes: { unit_id: u1.unit_id }, text: u1.primary_text, score: 1 }],
+    corpus: c330,
+  }).sources[0];
+  check('330 citations are unchanged: physical page, null printed page, physical viewer URL',
+    [plain.page_number, plain.printed_page_number ?? null, plain.viewer_url],
+    [2, null, `/source/${u1.document_id}/page/2`]);
+
+  // The frontend labels with printed numbers but must never route with one.
+  const appjs = readFileSync(path.join(ROOT, 'public/app.js'), 'utf8');
+  check('the frontend never passes a printed page to the source route',
+    [/\/source\/\$\{encodeURIComponent\(documentId\)\}\/page\/\$\{page\}/.test(appjs),
+     /\/page\/\$\{printed/.test(appjs),
+     /Printed page \$\{printed\} · PDF page \$\{page\} of \$\{pageCount\}/.test(appjs),
+     /`Page \$\{page\} of \$\{pageCount\}`/.test(appjs)],
+    [true, false, true, true]);
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

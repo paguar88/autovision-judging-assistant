@@ -17,6 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { requireSession } from '../../src/services/session.mjs';
 import { corpus } from '../../src/services/corpus.mjs';
+import { printedPageFor } from '../../src/services/printed-pages.mjs';
 
 export const config = {
   path: ['/source/:documentId', '/source/:documentId/meta', '/source/:documentId/page/:page'],
@@ -80,9 +81,14 @@ export default async (request, context) => {
   }
 
   if (meta) {
+    // printed_page_ranges is curated metadata the viewer uses to LABEL pages.
+    // `page` above is, and remains, the physical page: delivery never accepts or
+    // resolves a printed number.
     return new Response(JSON.stringify({
       document_id: doc.document_id, display_title: doc.display_title,
       document_version: doc.document_version, page_count: doc.page_count, page,
+      printed_page_ranges: doc.printed_page_ranges ?? null,
+      printed_page: printedPageFor(page, doc.printed_page_ranges),
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
 

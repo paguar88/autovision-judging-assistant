@@ -100,7 +100,19 @@ export function verifySources({ results, corpus: c, supportingQuote = null }) {
     const probe = buildCitation({ unit, excerpt, manifestDoc: doc, sliceExists: true });
     const slice = c.sliceExists(unit.document_id, probe.page_number);
     const cite = buildCitation({ unit, excerpt, manifestDoc: doc, sliceExists: slice });
-    citations.push({ ...cite, score: r.score ?? null, lookup, primary_text: unit.primary_text });
+
+    // Printed page is read from the unit's ingested metadata, never calculated
+    // here and never inside the citation resolver. Which one applies follows the
+    // resolution the resolver already reached: when evidence originates in the
+    // overlap, the printed number is the overlap origin's, matching page_number.
+    // Unmapped documents carry null and keep their existing physical-page labels.
+    const printed_page_number = cite.page_number == null
+      ? null
+      : (cite.page_number === unit.overlap_origin_page
+          ? (unit.overlap_origin_printed_page ?? null)
+          : (cite.page_number === unit.page_number ? (unit.printed_page_number ?? null) : null));
+
+    citations.push({ ...cite, printed_page_number, score: r.score ?? null, lookup, primary_text: unit.primary_text });
   }
 
   // Deduplicate by document + page, keeping the strongest score.

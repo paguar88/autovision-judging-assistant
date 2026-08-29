@@ -29,6 +29,7 @@ import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { fileURLToPath } from 'node:url';
+import { validatePrintedPageRanges, printedPageFor } from '../src/services/printed-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -273,15 +274,34 @@ for (const doc of admitted) {
     continue;
   }
 
-  // Folio validation - does the printed page number agree with the physical page?
+  // Curated printed-page mapping (Tier 2). Invalid configuration blocks: a bad
+  // range would attach a wrong printed number to an otherwise verified citation.
+  const printedRanges = doc.printed_page_ranges ?? null;
+  const printedErrors = validatePrintedPageRanges(printedRanges, { declaredPageCount: pages.length });
+  if (printedErrors.length) {
+    block('INVALID_PRINTED_PAGE_RANGE', printedErrors.join('; '), { document_id: doc.document_id });
+    continue;
+  }
+  const printedOf = (physical) => printedPageFor(physical, printedRanges);
+
+  // Folio validation - does the printed page number agree with the physical page,
+  // or with the curated mapping where one exists? A detected folio that the mapping
+  // explains is resolved, not a warning. A detected folio that CONTRADICTS the
+  // mapping is blocking: one of the two is wrong, and software must not pick.
   let folioChecked = 0, folioMatched = 0;
   const folioMismatches = [];
+  const folioContradictions = [];
   let stickyHeading = null;
   for (const p of pages) {
     const folio = detectFolio(p.lines);
     if (folio !== null) {
       folioChecked++;
-      if (folio === p.page_number) folioMatched++;
+      const expectedPrinted = printedOf(p.page_number);
+      if (expectedPrinted !== null) {
+        // A mapping exists for this page: the folio must agree with it.
+        if (folio === expectedPrinted) folioMatched++;
+        else folioContradictions.push({ physical_page: p.page_number, detected_folio: folio, curated_printed_page: expectedPrinted });
+      } else if (folio === p.page_number) folioMatched++;
       else folioMismatches.push({ physical_page: p.page_number, printed_folio: folio });
     }
     // Sticky propagation is OFF by default. Section structure in scanned/graphical
@@ -292,6 +312,12 @@ for (const doc of admitted) {
     // Tier 2 configuration - not an ingestion inference.
     const h = detectHeading(p.lines, p.text);
     p.section_heading = STICKY_HEADINGS ? (h ? (stickyHeading = h) : stickyHeading) : h;
+  }
+  if (folioContradictions.length) {
+    block('FOLIO_CONTRADICTS_CURATED_MAPPING',
+      `Detected printed folios disagree with the curated printed_page_ranges. Either the mapping or the source file is wrong; ingestion will not choose between them.`,
+      { document_id: doc.document_id, sample: folioContradictions.slice(0, 8), contradiction_count: folioContradictions.length });
+    continue;
   }
   if (folioMismatches.length) {
     warn('FOLIO_OFFSET', `Printed page numbers do not agree with physical PDF pages. Cross-document page citations into this document cannot be trusted without a curator-supplied offset.`,
@@ -315,6 +341,7 @@ for (const doc of admitted) {
     pageMap.push({
       document_id: doc.document_id,
       page_number: p.page_number,
+      printed_page_number: printedOf(p.page_number),
       extracted_text: p.text,
       normalized_text: normalize(p.text),
       section_heading: p.section_heading,
@@ -348,6 +375,9 @@ for (const doc of admitted) {
       document_title: doc.display_title,
       document_version: doc.document_version,
       page_number: p.page_number,
+      // Physical page stays authoritative for citation and delivery; the printed
+      // number is carried alongside it, never instead of it.
+      printed_page_number: printedOf(p.page_number),
       source_pdf_path: doc.filename,
       brand: BRAND,
       section_heading: p.section_heading,
@@ -360,6 +390,7 @@ for (const doc of admitted) {
       // resolver runs an exact substring containment test against these.
       overlap_span: overlapSpan,
       overlap_origin_page: overlapOriginPage,
+      overlap_origin_printed_page: overlapOriginPage == null ? null : printedOf(overlapOriginPage),
       primary_text: p.text,
     });
 
@@ -406,12 +437,18 @@ for (const doc of admitted) {
     slice_count: slices.length,
     retrieval_unit_count: unitFiles.length,
     display_description: doc.display_description,
+    // Curator-owned, preserved verbatim so the source endpoint and the viewer can
+    // label pages without recomputing anything.
+    printed_page_ranges: printedRanges,
     folio_validation: {
       pages_with_printed_folio: folioChecked,
       folio_matches_physical_page: folioMatched,
       mismatches: folioMismatches.length,
+      curated_mapping_applied: printedRanges != null,
       verdict: folioMismatches.length === 0 && folioChecked > 0
-        ? 'printed page numbers agree with physical pages'
+        ? (printedRanges
+            ? 'printed folios agree with the curated printed_page_ranges'
+            : 'printed page numbers agree with physical pages')
         : (folioChecked === 0 ? 'no printed folios detected' : 'OFFSET DETECTED'),
     },
     pages_with_thin_text: emptyPages,

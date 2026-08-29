@@ -361,9 +361,27 @@ check('coverage is taken from the resolved model, not derived',
   && !/modelCoverage\s*=\s*resolved\.(canonical_model_name|document_designation)/.test(askjs), true);
 check('ask.mjs passes coverage into askJudging',
   /askJudging\(\{[\s\S]*?\bmodelCoverage,[\s\S]*?\}\)/.test(askjs), true);
-check('askJudging accepts coverage and does not yet apply it',
-  /export async function askJudging\(\{[^}]*\bmodelCoverage\b[^}]*\}\)/.test(judgingjs)
-  && !/filters/.test(judgingjs), true);
+check('askJudging accepts coverage',
+  /export async function askJudging\(\{[^}]*\bmodelCoverage\b[^}]*\}\)/.test(judgingjs), true);
+
+/* ---- Slice 3: coverage becomes the file_search attribute filter ---- */
+const { buildFileSearchTool } = await import(moduleUrl('src/services/openai-judging.mjs'));
+
+check('without coverage the tool block is unchanged',
+  [buildFileSearchTool('vs_x', 5, null), buildFileSearchTool('vs_x', 5, '')],
+  [{ type: 'file_search', vector_store_ids: ['vs_x'], max_num_results: 5 },
+   { type: 'file_search', vector_store_ids: ['vs_x'], max_num_results: 5 }]);
+check('coverage produces an OR of brand_wide and the exact value, leaving the store and result count alone',
+  buildFileSearchTool('vs_x', 5, '330 GTC/GTS'),
+  { type: 'file_search', vector_store_ids: ['vs_x'], max_num_results: 5,
+    filters: { type: 'or', filters: [
+      { type: 'eq', key: 'scope', value: 'brand_wide' },
+      { type: 'eq', key: 'model_coverage', value: '330 GTC/GTS' }] } });
+check('matching is exact, so a variant is never reached through its family',
+  [buildFileSearchTool('vs_x', 5, '430 Scuderia').filters.filters[1].value,
+   buildFileSearchTool('vs_x', 5, 'F430').filters.filters[1].value,
+   buildFileSearchTool('vs_x', 5, '430 Scuderia').filters.filters.some(f => f.key === 'model_family')],
+  ['430 Scuderia', 'F430', false]);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

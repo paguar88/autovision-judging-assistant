@@ -61,8 +61,32 @@ function buildInput({ question, car, category }) {
   return `Judge-supplied context (not a judging conclusion, requires no citation):\n${ctx || '(none supplied)'}\n\nQuestion: ${question}`;
 }
 
-// modelCoverage is accepted and carried but NOT yet applied to the request.
-// Slice 3 turns it into the file_search attribute filter.
+/**
+ * Build the file_search tool block.
+ *
+ * Without a coverage value the block is byte-identical to the original: no filter
+ * key is emitted, so the unfiltered path is unchanged.
+ *
+ * With one, retrieval is restricted to what a judge standing at THAT car may rely
+ * on - brand-wide material, plus material whose curated model_coverage matches
+ * exactly. Comparison is equality, never family: the 430 Scuderia manual and the
+ * F430 parts catalogue share model_family F430, and a family match would let the
+ * variant answer as standard F430 documentation. The value is the curated
+ * attribute verbatim; no alias resolution or model-name inference happens here.
+ */
+export function buildFileSearchTool(vectorStoreId, maxResults, modelCoverage) {
+  const tool = { type: 'file_search', vector_store_ids: [vectorStoreId], max_num_results: maxResults };
+  if (modelCoverage == null || String(modelCoverage).trim() === '') return tool;
+  tool.filters = {
+    type: 'or',
+    filters: [
+      { type: 'eq', key: 'scope', value: 'brand_wide' },
+      { type: 'eq', key: 'model_coverage', value: String(modelCoverage) },
+    ],
+  };
+  return tool;
+}
+
 export async function askJudging({ question, car, category, vectorStoreId, modelCoverage = null, signal }) {
   const model = process.env.OPENAI_MODEL || 'gpt-4.1';
   const maxResults = parseInt(process.env.FILE_SEARCH_MAX_RESULTS || '5', 10);
@@ -79,7 +103,7 @@ export async function askJudging({ question, car, category, vectorStoreId, model
       model,
       instructions: SYSTEM,
       input: [{ role: 'user', content: buildInput({ question, car, category }) }],
-      tools: [{ type: 'file_search', vector_store_ids: [vectorStoreId], max_num_results: maxResults }],
+      tools: [buildFileSearchTool(vectorStoreId, maxResults, modelCoverage)],
       include: ['file_search_call.results'],
       text: { format: { type: 'json_schema', name: 'judging_answer', strict: true, schema: SCHEMA } },
       store: false,

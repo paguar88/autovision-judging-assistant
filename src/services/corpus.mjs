@@ -61,6 +61,43 @@ export function corpus(brand = 'ferrari') {
   return cache;
 }
 
+/**
+ * Judge-selectable models - derived, never authored.
+ *
+ * A model appears only when the curated alias table declares it active with a
+ * non-blank coverage value, AND an active, approved manifest document lists that
+ * exact coverage value in models_covered. Both halves must agree: an alias with no
+ * corpus behind it would offer the judge a model that can only fail closed, and a
+ * document with no alias has no judge vocabulary to reach it.
+ *
+ * Matching is exact. No family widening, no alias expansion, no related-model
+ * inference - `430 Scuderia` must never be satisfied by an `F430` document, and
+ * `365 GTB/4`, which carries no model_coverage, is excluded rather than guessed at.
+ * Alias-table order is preserved so the curator controls what the judge sees first.
+ *
+ * This list is a convenience for the interface. It is NOT the security boundary:
+ * ask.mjs independently resolves and fails closed on anything unsupported.
+ */
+export function supportedModels(brand = 'ferrari') {
+  const c = corpus(brand);
+
+  const covered = new Set();
+  for (const d of c.manifest) {
+    if (!d.active || d.redistribution_status !== 'approved') continue;
+    for (const m of d.models_covered || []) {
+      if (typeof m === 'string' && m.trim() !== '') covered.add(m);
+    }
+  }
+
+  return (c.aliases.models || [])
+    .filter(m =>
+      m.active === true
+      && typeof m.canonical_model_name === 'string' && m.canonical_model_name.trim() !== ''
+      && typeof m.model_coverage === 'string' && m.model_coverage.trim() !== ''
+      && covered.has(m.model_coverage))
+    .map(m => m.canonical_model_name);
+}
+
 /** Judge-facing document list - curated metadata only, never AI-inferred (v1.0 §16.1). */
 export function sourceDocuments(brand = 'ferrari') {
   return corpus(brand).manifest

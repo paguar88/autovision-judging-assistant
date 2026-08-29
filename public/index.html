@@ -58,7 +58,11 @@
       </label>
       <label class="field field--model">
         <span class="field__label">Model</span>
-        <input id="carModel" type="text" autocapitalize="characters" placeholder="330 GTC" enterkeyhint="next">
+        <!-- Options are populated from the authenticated /api/sources response.
+             No model name is hard-coded here: the list must follow the corpus. -->
+        <select id="carModel" disabled>
+          <option value="">Select model</option>
+        </select>
       </label>
     </div>
 

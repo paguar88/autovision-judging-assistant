@@ -402,5 +402,215 @@ check('the message names the missing approved source coverage',
   /Approved source coverage is not currently configured/.test(gap.body.message), true);
 check('and no OpenAI request was made', openAICalls, callsBeforeGap);
 
+/* ---- Curated model pulldown: server-derived, corpus-bound ----
+   The judge picks from models the corpus can actually answer. The list is derived
+   from the alias table intersected with approved document coverage, using exact
+   matching only - no family widening, no alias expansion. It is a convenience, not
+   a security boundary: ask.mjs resolves the model again and fails closed. */
+{
+  const indexhtml = readFileSync(path.join(REPO, 'public/index.html'), 'utf8');
+  const stylescss = readFileSync(path.join(REPO, 'public/styles.css'), 'utf8');
+
+  // The rule, applied to the curated inputs rather than to a stale build.
+  const idx = JSON.parse(readFileSync(path.join(REPO, 'config/source-index.json'), 'utf8'));
+  const aliases = JSON.parse(readFileSync(path.join(REPO, 'config/model-aliases.json'), 'utf8'));
+  const covered = new Set();
+  for (const d of idx.documents) {
+    if (!d.active || d.redistribution_status !== 'approved') continue;
+    for (const m of d.models_covered || []) if (typeof m === 'string' && m.trim()) covered.add(m);
+  }
+  const derived = aliases.models
+    .filter(m => m.active === true
+      && typeof m.canonical_model_name === 'string' && m.canonical_model_name.trim() !== ''
+      && typeof m.model_coverage === 'string' && m.model_coverage.trim() !== ''
+      && covered.has(m.model_coverage))
+    .map(m => m.canonical_model_name);
+
+  check('the promoted corpus yields exactly the seven supported models, in alias-table order',
+    derived,
+    ['330 GTC', '330 GTS', '458 Italia', 'F430', '430 Scuderia', 'F8 Tributo', 'GTC4Lusso T']);
+
+  check('every option comes from an active alias whose exact coverage an approved document lists',
+    derived.every(name => {
+      const a = aliases.models.find(m => m.canonical_model_name === name);
+      return a.active === true && covered.has(a.model_coverage)
+        && idx.documents.some(d => d.active && d.redistribution_status === 'approved'
+             && (d.models_covered || []).includes(a.model_coverage));
+    }), true);
+
+  // 365 GTB/4 has no coverage; the bridge has coverage but is inactive. Each is
+  // excluded for its own reason, so assert the reason as well as the absence.
+  check('365 GTB/4 and the inactive bridge are both excluded, for the right reasons',
+    [derived.includes('365 GTB/4'),
+     (aliases.models.find(m => m.canonical_model_name === '365 GTB/4').model_coverage ?? null),
+     derived.includes('330 GTC/GTS'),
+     aliases.models.find(m => m.model_id === 'ferrari-330-gtc-gts-corpus').active],
+    [false, null, false, false]);
+
+  check('the model control is a select with an empty placeholder, disabled until the list loads',
+    [/<select id="carModel"[^>]*\bdisabled\b/.test(indexhtml),
+     /<option value="">Select model<\/option>/.test(indexhtml),
+     /<input id="carModel"/.test(indexhtml)],
+    [true, true, false]);
+
+  check('no model name is hard-coded in any client file',
+    [indexhtml, appjs, stylescss].every(src =>
+      !/330 GT[CS]|458 Italia|F430|430 Scuderia|F8 Tributo|GTC4Lusso|365 GTB/.test(src)), true);
+
+  check('options are built with DOM creation and textContent, never innerHTML',
+    [/createElement\('option'\)/.test(appjs), /opt\.textContent = name/.test(appjs),
+     /opt\.value = name/.test(appjs), /innerHTML/.test(appjs)],
+    [true, true, true, false]);
+
+  check('the list is loaded from the existing authenticated endpoint, not a new one',
+    [/loadSupportedModels[\s\S]*?api\('\/api\/sources'\)/.test(appjs),
+     /\/api\/models/.test(appjs)],
+    [true, false]);
+
+  check('a load failure or an empty list leaves the control disabled and blocks Set',
+    [/if \(!ok \|\| !models\.length\)/.test(appjs),
+     /modelsLoaded = false;\s*\n\s*select\.disabled = true;/.test(appjs),
+     /if \(!modelsLoaded\) \{/.test(appjs)],
+    [true, true, true]);
+
+  check('a reopened setup preserves the selection and Clear returns to the placeholder',
+    [/if \(previous && models\.includes\(previous\)\) select\.value = previous;/.test(appjs),
+     /\$\('carModel'\)\.value = '';/.test(appjs)],
+    [true, true]);
+
+  check('four year digits still move focus to the model control',
+    /shouldAdvanceFromYear\(cleaned\)\) \$\('carModel'\)\.focus\(\)/.test(appjs), true);
+
+  check('the selected model still reaches context, history identity and the ask payload',
+    [/const model = \$\('carModel'\)\.value\.trim\(\)/.test(appjs),
+     /car: \{ year, model, concours_class/.test(appjs),
+     /carIdentity\(state\.car\)/.test(appjs)],
+    [true, true, true]);
+
+  // The derivation above runs on the curated inputs. This runs the shipped function
+  // against the actual build, which needs the regenerated 16-document manifest: the
+  // 155-unit build predates the promoted models_covered values.
+  const { supportedModels } = await import(moduleUrl('src/services/corpus.mjs'));
+  const live = supportedModels('ferrari');
+  if (live.length !== derived.length) {
+    check('REQUIRES 591-UNIT BUILD REGENERATION: supportedModels() returns the seven models from the built manifest',
+      `supportedModels() returned ${JSON.stringify(live)} against the current build; regenerate the 16-document build`,
+      JSON.stringify(derived));
+  } else {
+    check('supportedModels() returns the seven models from the built manifest', live, derived);
+  }
+
+  check('select is styled with the other fields, including disabled and focus states',
+    [/input, textarea, select \{/.test(stylescss),
+     /select:disabled/.test(stylescss),
+     /select:focus-visible/.test(stylescss)],
+    [true, true, true]);
+
+  // Suppressing appearance without drawing a replacement arrow makes a pulldown
+  // look like a text box - worst on the phone this is actually used on.
+  const selectRules = (stylescss.match(/(^|\})[^{}]*\bselect\b[^{}]*\{[^}]*\}/g) || []).join('\n');
+  check('the native select indicator is not suppressed',
+    [/appearance\s*:\s*none/.test(selectRules),
+     /select\s*\{[^}]*cursor:\s*pointer/.test(stylescss)],
+    [false, true]);
+
+  /* ---- The real loader, executed ----
+     public/app.js is a browser script, so the function is lifted out of the shipped
+     source and run against stub controls. These assertions therefore fail if the
+     real loading or failure behaviour changes, not merely if the text does. */
+  const loaderSrc = appjs.slice(appjs.indexOf('const MODELS_UNAVAILABLE'), appjs.indexOf("/* ---------------- Gate"));
+  const makeLoader = (apiImpl) => {
+    const els = {
+      carModel: { disabled: true, value: '', children: [],
+        replaceChildren() { this.children = []; },
+        appendChild(o) { this.children.push(o); } },
+      setupError: { textContent: '', shown: false },
+    };
+    const doc = { createElement: () => ({ value: '', textContent: '' }) };
+    const factory = new Function('api', '$', 'text', 'show', 'document', `
+      let modelsLoaded = false;
+      ${loaderSrc}
+      return { run: loadSupportedModels, state: () => modelsLoaded };
+    `);
+    const built = factory(apiImpl, (id) => els[id],
+      (el, t) => { el.textContent = t; }, (el, v) => { el.shown = v; }, doc);
+    return { ...built, els };
+  };
+
+  const good = { ok: true, body: { models: derived } };
+  const okLoader = makeLoader(async () => good);
+  await okLoader.run();
+  check('a successful authenticated response creates the seven options and enables the select',
+    [okLoader.state(), okLoader.els.carModel.disabled,
+     okLoader.els.carModel.children.length,
+     okLoader.els.carModel.children.map(o => o.textContent),
+     okLoader.els.carModel.children[0].value,
+     okLoader.els.setupError.shown],
+    [true, false, 8, ['Select model', ...derived], '', false]);
+
+  const notOk = makeLoader(async () => ({ ok: false, body: { error: 'Not authenticated' } }));
+  await notOk.run();
+  check('an unsuccessful response leaves the select disabled and shows the setup error',
+    [notOk.state(), notOk.els.carModel.disabled, notOk.els.setupError.shown,
+     /could not be loaded/.test(notOk.els.setupError.textContent)],
+    [false, true, true, true]);
+
+  const empty = makeLoader(async () => ({ ok: true, body: { models: [] } }));
+  await empty.run();
+  check('an empty model list leaves the select disabled and shows the setup error',
+    [empty.state(), empty.els.carModel.disabled, empty.els.setupError.shown],
+    [false, true, true]);
+
+  // A dropped request on show-ground cellular must fail closed, not surface as an
+  // unhandled rejection.
+  const thrown = makeLoader(async () => { throw new TypeError('Failed to fetch'); });
+  let unhandled = false;
+  try { await thrown.run(); } catch { unhandled = true; }
+  check('a thrown network error is caught, leaves the select disabled, and shows the error',
+    [unhandled, thrown.state(), thrown.els.carModel.disabled, thrown.els.setupError.shown,
+     /could not be loaded/.test(thrown.els.setupError.textContent)],
+    [false, false, true, true, true]);
+}
+
+/* ---- The authenticated endpoint itself ---- */
+{
+  const { default: sources } = await import(moduleUrl('netlify/functions/sources.mjs'));
+
+  const authed = await sources({ method: 'GET', url: 'https://x/api/sources',
+    headers: { get: (k) => (k === 'cookie' ? cookie : null) } });
+  const payload = JSON.parse(await authed.text());
+  const SEVEN = ['330 GTC', '330 GTS', '458 Italia', 'F430', '430 Scuderia', 'F8 Tributo', 'GTC4Lusso T'];
+  // The endpoint reports what the BUILT manifest supports, so the seven only appear
+  // once the 16-document build exists. The shape is asserted either way.
+  check('the authenticated sources response returns documents and a models array',
+    [authed.status, Array.isArray(payload.documents), Array.isArray(payload.models)],
+    [200, true, true]);
+  if (payload.models.length !== SEVEN.length) {
+    check('REQUIRES 591-UNIT BUILD REGENERATION: /api/sources returns the exact seven models',
+      `returned ${JSON.stringify(payload.models)} against the current build; regenerate the 16-document build`,
+      JSON.stringify(SEVEN));
+  } else {
+    check('/api/sources returns the exact seven models', payload.models, SEVEN);
+  }
+
+  const anon = await sources({ method: 'GET', url: 'https://x/api/sources',
+    headers: { get: () => null } });
+  check('an unauthenticated request is still refused, exposing no model list',
+    [anon.status, JSON.parse(await anon.text()).models],
+    [401, undefined]);
+}
+
+// Server-side resolution remains the boundary: a tampered payload naming an
+// unsupported model must fail closed before any OpenAI request.
+{
+  const before = openAICalls;
+  const tampered = await askLive({ ...FULL, car: { year: '1970', model: '365 GTB/4', concours_class: 'Regular' } });
+  const bridge = await askLive({ ...FULL, car: { year: '1967', model: '330 GTC/GTS', concours_class: 'Regular' } });
+  const unknown = await askLive({ ...FULL, car: { year: '1962', model: '250 GTO', concours_class: 'Regular' } });
+  check('a tampered request naming an unsupported model is refused server-side, with no OpenAI call',
+    [tampered.body.status, tampered.body.code, bridge.body.status, unknown.body.status, openAICalls],
+    ['MODEL_NOT_COVERED', 'MODEL_COVERAGE_NOT_CONFIGURED', 'MODEL_NOT_COVERED', 'MODEL_NOT_COVERED', before]);
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

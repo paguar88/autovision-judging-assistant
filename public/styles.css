@@ -131,7 +131,7 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 /* ---------- Question, locked until context exists ---------- */
 .card--question.is-locked { opacity: 0.55; }
-textarea:disabled, input:disabled { background: var(--paper-warm); cursor: not-allowed; }
+textarea:disabled, input:disabled, select:disabled { background: var(--paper-warm); cursor: not-allowed; }
 
 /* Year is a four-character text entry with a numeric keypad - never a spinner. */
 #carYear { text-align: center; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
@@ -180,14 +180,19 @@ input[inputmode="numeric"] { -moz-appearance: textfield; appearance: textfield; 
 /* ---------- Fields ---------- */
 .field { display: block; margin-bottom: 14px; }
 .field__label { display: block; color: var(--ink-soft); margin-bottom: 6px; }
-input, textarea {
+input, textarea, select {
   width: 100%; min-height: var(--tap); padding: 11px 12px;
   font: inherit; font-size: 17px;          /* 17px+ stops iOS zoom-on-focus */
   color: var(--ink); background: var(--paper);
   border: 1.5px solid var(--rule); border-radius: var(--radius);
 }
 textarea { resize: vertical; line-height: 1.45; }
-input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+/* The model control shares the field sizing, typography, border and states with
+   Year beside it, but keeps the browser's native dropdown indicator: suppressing
+   appearance without drawing a replacement arrow would make a pulldown look like
+   another text box, which matters most on the phone this is used on. */
+select { cursor: pointer; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
   outline: 3px solid var(--stamp); outline-offset: 2px;
 }
 

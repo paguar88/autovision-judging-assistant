@@ -118,6 +118,75 @@ const api = async (url, options = {}) => {
   return { ok: res.ok, status: res.status, body };
 };
 
+/* ---------------- Supported models ---------------- */
+// The model list is server-derived from the approved corpus and arrives on the
+// authenticated /api/sources response. No model name is hard-coded here: if the
+// corpus changes, the control follows without a code change.
+//
+// Until the list loads the control stays disabled, so a judge can never establish
+// context around a model the corpus cannot answer. This is convenience, not
+// security - ask.mjs resolves the model again server-side and fails closed.
+let modelsLoaded = false;
+
+const MODELS_UNAVAILABLE =
+  'The list of supported models could not be loaded, so a car cannot be set up. Reload the page, and if this continues report it with Feedback.';
+
+async function loadSupportedModels() {
+  const select = $('carModel');
+
+  // Start from the closed state on every attempt, including a retry after a failure,
+  // so a half-loaded control can never be left enabled.
+  modelsLoaded = false;
+  select.disabled = true;
+
+  const failClosed = () => {
+    modelsLoaded = false;
+    select.disabled = true;
+    text($('setupError'), MODELS_UNAVAILABLE);
+    show($('setupError'), true);
+  };
+
+  let ok, body;
+  try {
+    // A judge on show-ground cellular will hit dropped requests. A rejected fetch
+    // must fail closed like any other failure, never surface as an unhandled
+    // rejection that leaves the control in an indeterminate state.
+    ({ ok, body } = await api('/api/sources'));
+  } catch {
+    failClosed();
+    return;
+  }
+
+  const models = Array.isArray(body?.models) ? body.models.filter(m => typeof m === 'string' && m.trim() !== '') : [];
+
+  if (!ok || !models.length) {
+    failClosed();
+    return;
+  }
+
+  const previous = select.value;
+  select.replaceChildren();
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select model';
+  select.appendChild(placeholder);
+
+  for (const name of models) {
+    const opt = document.createElement('option');
+    opt.value = name;            // the canonical name IS the value; no separate code
+    opt.textContent = name;
+    select.appendChild(opt);
+  }
+
+  // A reopened setup keeps whatever was chosen before.
+  if (previous && models.includes(previous)) select.value = previous;
+
+  modelsLoaded = true;
+  select.disabled = false;
+  show($('setupError'), false);
+}
+
 /* ---------------- Gate ---------------- */
 async function enter() {
   const pw = $('password').value;
@@ -133,6 +202,7 @@ async function enter() {
   $('password').value = '';
   show($('gate'), false);
   show($('app'), true);
+  await loadSupportedModels();
   $('carYear').focus();
 }
 $('enter').addEventListener('click', enter);
@@ -211,6 +281,14 @@ function establish() {
   show($('setupError'), false);
   const year = $('carYear').value.trim();
   const model = $('carModel').value.trim();
+
+  // Without a loaded list there is nothing legitimate to select, so Set must not
+  // establish a context that the server would only reject.
+  if (!modelsLoaded) {
+    text($('setupError'), MODELS_UNAVAILABLE);
+    show($('setupError'), true);
+    return;
+  }
   const candidate = {
     category: state.draft.category,
     car: { year, model, concours_class: state.draft.concours_class },
@@ -260,7 +338,7 @@ $('changeContext').addEventListener('click', openSetup);
 // is pressed again - the fields are a draft until then.
 $('clearInfo').addEventListener('click', () => {
   $('carYear').value = '';
-  $('carModel').value = '';
+  $('carModel').value = '';   // back to the placeholder option
   state.draft = { category: null, concours_class: null };
   paintChips();
   show($('setupError'), false);
@@ -558,7 +636,11 @@ $('docsBack').addEventListener('click', () => show($('docs'), false));
 /* ---------------- Boot ---------------- */
 (async () => {
   const { body } = await api('/api/auth');
-  if (body?.authenticated) { show($('gate'), false); show($('app'), true); }
+  if (body?.authenticated) {
+    show($('gate'), false);
+    show($('app'), true);
+    await loadSupportedModels();
+  }
   paintChips();
   paintLock();
   paintHistory();

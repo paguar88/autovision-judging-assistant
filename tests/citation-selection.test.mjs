@@ -122,8 +122,18 @@ check('the Engine and Chassis checklist page is not displayed',
 check('the general Judging Guidelines page is not displayed',
   shown.includes('iacpfa-judging-guidelines#1'), false);
 
-check('verification counts still report the full retrieved set',
-  [live.sources_verified, live.sources_displayed + live.sources_suppressed], [5, 5]);
+check('verification counts report the full unique verified page set',
+  [live.sources_verified, live.sources_displayed + live.sources_suppressed], [4, 4]);
+// The supporting quote originates on checklist page 2 and reaches the page-3 unit
+// only as overlap. Before the quote was passed to the resolver, the whole page-3
+// chunk verified as page 3 - a citation sending the judge to a page that does not
+// contain the sentence the answer rested on. Both results now resolve to page 2 and
+// deduplicate, which is why the unique verified count is 4 rather than 5.
+check('the overlap result no longer creates a false checklist page-3 citation',
+  [shown.includes('ferrari-330-gtc-gts-checklist#3'),
+   live.sources.some(s => s.document_id === 'ferrari-330-gtc-gts-checklist' && s.page_number === 3),
+   shown.includes('ferrari-330-gtc-gts-checklist#2')],
+  [false, false, true]);
 // v2.0.8: suppression is a retrieval diagnostic, not judge-facing.
 check('suppression is not shown to the judge', live.warnings.join(' '), '');
 check('suppression is recorded in diagnostics', /did not add support/.test(live.diagnostics.join(' ')), true);

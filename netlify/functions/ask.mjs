@@ -121,7 +121,13 @@ export default async (request) => {
     });
 
     // 5. Reconcile model output against retrieval metadata and the frozen manifest.
-    const { sources, verified, rejected } = verifySources({ results, corpus: c });
+    //    The supporting quote narrows WHICH span of a result the resolver examines.
+    //    It is never treated as evidence, and model page numbers are still ignored.
+    const { sources, verified, rejected } = verifySources({
+      results,
+      corpus: c,
+      supportingQuote: parsed.supporting_quote,
+    });
     if (rejected.length) diagnostics.push(`${rejected.length} retrieved source(s) could not be reconciled to the approved manifest and were discarded.`);
     if (sources.length && !verified.length) {
       diagnostics.push('No exact page could be verified for these sources.');

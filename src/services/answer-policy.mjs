@@ -53,10 +53,31 @@ export function statesNotFound(answerText) {
   return classifyAnswerProse(answerText) === 'corpus_negative';
 }
 
-/** Resolve retrieval results into verified citations. Model claims are ignored. */
-export function verifySources({ results, corpus: c }) {
+/**
+ * Resolve retrieval results into verified citations. Model claims are ignored.
+ *
+ * `supportingQuote` is the model's own exact quotation. It is used ONLY to narrow
+ * which span of a retrieval result the resolver examines - never as evidence in
+ * itself. A page-N unit carries page-(N-1) overlap text, so handing the resolver
+ * the whole chunk makes an excerpt that physically originates on the previous page
+ * resolve to page N. Passing the quote instead lets the resolver's existing
+ * containment test attribute it to the page it actually came from (A.6).
+ *
+ * The quote is used only when it appears verbatim in that result under the
+ * resolver's own normalization. No fuzzy matching, no model-supplied page numbers,
+ * and a result is never rejected merely because the quote is absent from it - the
+ * quote may legitimately belong to a different result in the same set.
+ */
+export function verifySources({ results, corpus: c, supportingQuote = null }) {
   const citations = [];
   const rejected = [];
+
+  // Same normalization the citation resolver applies, so "contained verbatim"
+  // means the same thing on both sides of the boundary.
+  const collapse = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const quote = typeof supportingQuote === 'string' && supportingQuote.trim() !== ''
+    ? supportingQuote : null;
+  const normQuote = quote ? collapse(quote) : null;
 
   for (const r of results || []) {
     let unit = r.attributes?.unit_id ? c.unitById.get(r.attributes.unit_id) : null;
@@ -72,9 +93,13 @@ export function verifySources({ results, corpus: c }) {
       continue;
     }
 
-    const probe = buildCitation({ unit, excerpt: r.text, manifestDoc: doc, sliceExists: true });
+    // Narrow to the quote only when this result verifiably contains it; otherwise
+    // fall back to the complete retrieval text exactly as before.
+    const excerpt = normQuote && collapse(r.text).includes(normQuote) ? quote : r.text;
+
+    const probe = buildCitation({ unit, excerpt, manifestDoc: doc, sliceExists: true });
     const slice = c.sliceExists(unit.document_id, probe.page_number);
-    const cite = buildCitation({ unit, excerpt: r.text, manifestDoc: doc, sliceExists: slice });
+    const cite = buildCitation({ unit, excerpt, manifestDoc: doc, sliceExists: slice });
     citations.push({ ...cite, score: r.score ?? null, lookup, primary_text: unit.primary_text });
   }
 

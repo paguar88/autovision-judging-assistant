@@ -12,6 +12,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { buildCitation, RESOLUTION } from '../src/services/citation-resolver.mjs';
+import { verifySources } from '../src/services/answer-policy.mjs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -186,6 +187,68 @@ console.log('\n=== CITATION CHAIN MACHINERY TEST ===\n');
   });
   check('all 591 units have an in-range page with a generated slice',
     [units.length, broken.length], [591, 0]);
+}
+
+// 9. Citation Repair Slice 1: the model's exact supporting_quote narrows WHICH span
+//    of a retrieval result the resolver examines.
+//
+//    A page-18 unit carries page-17 overlap text. Handing the resolver the complete
+//    chunk makes it resolve to page 18, because the page-18 primary text is present
+//    too - so a judge following the citation lands on a page that does not contain
+//    the sentence the answer rested on. Passing the quote instead lets the existing
+//    containment test attribute it to the page it physically came from.
+//
+//    The quote is a span selector, never evidence: page numbers still come only from
+//    the resolver, matching is verbatim under the resolver's own normalization, and a
+//    result is never rejected merely because the quote is absent from it.
+{
+  const u18 = unitOf('ferrari-330-gtc-gts-as-built:p18');
+  const wholeChunk = `${u18.overlap_span}\n${u18.primary_text}`;
+  const overlapQuote = u18.overlap_span.split('\n')[0].trim();      // page 17 text
+  const primaryQuote = u18.primary_text.split('\n')[0].trim();      // page 18 text
+
+  const c = {
+    unitById: new Map(units.map(u => [u.unit_id, u])),
+    unitByFile: new Map(units.map(u => [u.unit_file, u])),
+    docById: new Map(manifest.map(d => [d.document_id, d])),
+    sliceExists: (docId, page) => sliceFor(docId, page),
+  };
+  const verify = (supportingQuote) => verifySources({
+    results: [{ attributes: { unit_id: u18.unit_id }, text: wholeChunk, score: 1 }],
+    corpus: c,
+    supportingQuote,
+  }).sources[0];
+
+  const overlapCase = verify(overlapQuote);
+  check('a quote found only in the overlap resolves to the origin page and opens /page/17',
+    [overlapCase.page_number, overlapCase.resolution, overlapCase.page_verified, overlapCase.viewer_url],
+    [17, RESOLUTION.OVERLAP, true, `/source/${u18.document_id}/page/17`]);
+
+  const primaryCase = verify(primaryQuote);
+  check('a quote found only in the primary text resolves to the unit\'s own page',
+    [primaryCase.page_number, primaryCase.resolution], [18, RESOLUTION.PRIMARY]);
+
+  // Fallback: with no usable quote the complete result text is passed exactly as
+  // before, so the pre-existing behaviour is preserved rather than merely similar.
+  const baseline = verify(null);
+  const fallbacks = [null, undefined, '', '   ', 'a sentence that appears nowhere in this unit']
+    .map(q => { const s = verify(q); return [s.page_number, s.resolution]; });
+  check('null, blank and non-matching quotes all preserve the complete-result fallback',
+    fallbacks, Array(5).fill([baseline.page_number, baseline.resolution]));
+
+  // A result that simply does not contain the quote is still cited, not discarded:
+  // the quote may belong to a different result in the same set.
+  const other = verifySources({
+    results: [{ attributes: { unit_id: 'ferrari-330-gtc-gts-checklist:p1' }, text: unitOf('ferrari-330-gtc-gts-checklist:p1').primary_text, score: 1 }],
+    corpus: c,
+    supportingQuote: overlapQuote,
+  });
+  check('a result lacking the quote is still cited, not rejected',
+    [other.sources.length, other.rejected.length], [1, 0]);
+
+  const askjs = readFileSync(path.join(ROOT, 'netlify/functions/ask.mjs'), 'utf8');
+  check('ask.mjs passes the model supporting_quote into verifySources',
+    /verifySources\(\{[\s\S]*?supportingQuote:\s*parsed\.supporting_quote[\s\S]*?\}\)/.test(askjs), true);
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

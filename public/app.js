@@ -3,7 +3,7 @@
    question is answered fresh within the active context (A.12). Model text is
    inserted with textContent only - never as HTML (v1.0 §27). */
 
-const APP_VERSION = '2.0.13';
+const APP_VERSION = '2.0.14';
 console.info(`Concours Judging Assistant ${APP_VERSION}`);
 
 const $ = (id) => document.getElementById(id);

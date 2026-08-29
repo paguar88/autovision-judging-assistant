@@ -15,8 +15,18 @@ import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, readdirSync } from 
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/* import() requires a URL, not a filesystem path. On Windows an absolute path
+   begins with a drive letter, which Node reads as an unsupported 'c:' protocol.
+   pathToFileURL also percent-encodes spaces and emits forward slashes, so the
+   result stays safe when interpolated into a child process's source string -
+   a raw Windows path there would additionally be mangled as backslash escapes.
+   On macOS and Linux this yields the same file:/// URL the paths resolved to
+   before, so behaviour is unchanged. */
+const moduleUrl = (rel) => pathToFileURL(path.join(REPO, rel)).href;
 
 /* Build the ask-function bundle: build/ferrari/*.json + config/*.json, nothing else. */
 const BUNDLE = mkdtempSync(path.join(tmpdir(), 'ask-bundle-'));
@@ -69,9 +79,9 @@ const SUPPORTED_ANSWER = {
   conflict_note: null,
 };
 
-const { issueSession } = await import(`${REPO}/src/services/session.mjs`);
+const { issueSession } = await import(moduleUrl('src/services/session.mjs'));
 const cookie = issueSession().split(';')[0];
-const { default: ask } = await import(`${REPO}/netlify/functions/ask.mjs`);
+const { default: ask } = await import(moduleUrl('netlify/functions/ask.mjs'));
 
 const askLive = async (body) => {
   const res = await ask({
@@ -146,8 +156,8 @@ check('forged unit id yields no source and no answer', [forged.sources.length, f
 const viewer = execFileSync(process.execPath, ['-e', `
   process.env.BETA_PASSWORD='test-password';
   (async()=>{
-    const {issueSession}=await import('${REPO}/src/services/session.mjs');
-    const {default:source}=await import('${REPO}/netlify/functions/source.mjs');
+    const {issueSession}=await import('${moduleUrl('src/services/session.mjs')}');
+    const {default:source}=await import('${moduleUrl('netlify/functions/source.mjs')}');
     const c=issueSession().split(';')[0];
     const res=await source({method:'GET',url:'https://x/s?document_id=ferrari-330-gtc-gts-checklist&page=3',
       headers:{get:k=>k==='cookie'?c:null}});

@@ -14,8 +14,15 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/* import() takes a URL, not a filesystem path. A Windows absolute path starts with
+   a drive letter, which Node reads as an unsupported 'c:' protocol. pathToFileURL
+   produces the same file:/// URL these paths already resolved to on macOS and
+   Linux, so behaviour there is unchanged. */
+const moduleUrl = (rel) => pathToFileURL(path.join(ROOT, rel)).href;
 process.env.BETA_PASSWORD = 'test-password';
 
 const appjs = readFileSync(path.join(ROOT, 'public/app.js'), 'utf8');
@@ -59,8 +66,8 @@ function route(url) {
   return null;
 }
 
-const { issueSession } = await import(`${ROOT}/src/services/session.mjs`);
-const { default: source, config: sourceConfig } = await import(`${ROOT}/netlify/functions/source.mjs`);
+const { issueSession } = await import(moduleUrl('src/services/session.mjs'));
+const { default: source, config: sourceConfig } = await import(moduleUrl('netlify/functions/source.mjs'));
 const cookie = issueSession().split(';')[0];
 
 /** Navigate as the browser would: build URL -> rewrite -> invoke the function. */

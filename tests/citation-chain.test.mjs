@@ -12,8 +12,9 @@
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { buildCitation, RESOLUTION } from '../src/services/citation-resolver.mjs';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const B = path.join(ROOT, 'build/ferrari');
 const units = JSON.parse(readFileSync(path.join(B, 'retrieval-units.json'), 'utf8')).units;
 const manifest = JSON.parse(readFileSync(path.join(B, 'document-manifest.json'), 'utf8')).documents;

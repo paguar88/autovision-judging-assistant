@@ -6,8 +6,9 @@
  */
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const B = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../build/ferrari');
+const B = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../build/ferrari');
 const load = (f) => { try { return existsSync(path.join(B, f)) ? JSON.parse(readFileSync(path.join(B, f), 'utf8')) : null; } catch { return null; } };
 
 const ing = load('ingestion-report.json');

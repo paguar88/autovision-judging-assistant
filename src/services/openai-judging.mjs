@@ -61,7 +61,9 @@ function buildInput({ question, car, category }) {
   return `Judge-supplied context (not a judging conclusion, requires no citation):\n${ctx || '(none supplied)'}\n\nQuestion: ${question}`;
 }
 
-export async function askJudging({ question, car, category, vectorStoreId, signal }) {
+// modelCoverage is accepted and carried but NOT yet applied to the request.
+// Slice 3 turns it into the file_search attribute filter.
+export async function askJudging({ question, car, category, vectorStoreId, modelCoverage = null, signal }) {
   const model = process.env.OPENAI_MODEL || 'gpt-4.1';
   const maxResults = parseInt(process.env.FILE_SEARCH_MAX_RESULTS || '5', 10);
 

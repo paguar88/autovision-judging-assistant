@@ -10,8 +10,15 @@
 import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/* import() takes a URL, not a filesystem path. A Windows absolute path starts with
+   a drive letter, which Node reads as an unsupported 'c:' protocol. pathToFileURL
+   produces the same file:/// URL these paths already resolved to on macOS and
+   Linux, so behaviour there is unchanged. */
+const moduleUrl = (rel) => pathToFileURL(path.join(REPO, rel)).href;
 
 const BUNDLE = mkdtempSync(path.join(tmpdir(), 'pres-bundle-'));
 mkdirSync(path.join(BUNDLE, 'build/ferrari'), { recursive: true });
@@ -50,9 +57,9 @@ function stub(results, answer) {
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 
-const { issueSession } = await import(`${REPO}/src/services/session.mjs`);
+const { issueSession } = await import(moduleUrl('src/services/session.mjs'));
 const cookie = issueSession().split(';')[0];
-const { default: ask } = await import(`${REPO}/netlify/functions/ask.mjs`);
+const { default: ask } = await import(moduleUrl('netlify/functions/ask.mjs'));
 const askLive = async (body) => (await ask({
   method: 'POST', url: 'https://x/api/ask',
   headers: { get: (k) => (k === 'cookie' ? cookie : null) },
@@ -89,7 +96,7 @@ check('both suppressions are recorded server-side',
 
 // Nothing substantive may be lost: every distinctive term from the suppressed blocks
 // must still be present in the answer the judge reads.
-const { salience, salientSet, present } = await import(`${REPO}/src/services/text-salience.mjs`);
+const { salience, salientSet, present } = await import(moduleUrl('src/services/text-salience.mjs'));
 const sal = salience(units.map(u => u.primary_text));
 // A "fact" is a distinctive term that actually appears in the cited source pages and
 // is not merely borrowed from a document title - the same definition the suppressor

@@ -61,6 +61,7 @@ export default async (request) => {
 
   // 3. Curated alias normalization before retrieval (A.11).
   let retrievalModel = null;
+  let modelCoverage = null;
   if (car.model) {
     const resolved = resolveModel(car.model);
     if (!resolved.resolved) {
@@ -72,6 +73,10 @@ export default async (request) => {
       });
     }
     retrievalModel = resolved.document_designation;
+    // Curator-owned retrieval key (A.11). Carried separately from the document
+    // designation: for 330 GTC the two deliberately differ, and the designation
+    // is prompt context while coverage is destined for the retrieval filter.
+    modelCoverage = resolved.model_coverage;
     if (resolved.matched_alias) {
       warnings.push(`"${resolved.matched_alias}" was read as ${resolved.canonical_model_name}.`);
     }
@@ -96,6 +101,7 @@ export default async (request) => {
       car: { ...car, model: retrievalModel || car.model },
       category,
       vectorStoreId,
+      modelCoverage,
       signal: controller.signal,
     });
 

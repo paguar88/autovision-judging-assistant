@@ -14,7 +14,13 @@
  *   transcription-vocabulary.json candidate terminology (NOT aliases - A.14)
  *   ingestion-report.json         successes, warnings, blocking errors
  *
- * Usage: node scripts/ingest.mjs [--brand ferrari] [--skip-slices]
+ * Usage: node scripts/ingest.mjs [--brand ferrari] [--skip-slices] [--corpus-dir <path>]
+ *
+ * --corpus-dir points the pipeline at a source folder outside the repository.
+ * It exists so a large test corpus can be ingested from local disk without the
+ * PDFs entering git or the Netlify build (netlify.toml rebuilds from
+ * approved-source-docs/ on every deploy). The default is unchanged, so the
+ * production `--brand ferrari` run behaves exactly as before.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, statSync } from 'node:fs';
@@ -22,11 +28,17 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const BRAND = argVal('--brand') || 'ferrari';
 const SKIP_SLICES = args.includes('--skip-slices');
+
+// Corpus location. Resolution order: CLI flag, then brand config, then the
+// historical default. `ferrari` declares no corpus_dir, so it resolves to
+// approved-source-docs/ exactly as before this flag existed.
+const CORPUS_DIR_FLAG = argVal('--corpus-dir');
 
 // ---- Tunables (configuration, not product logic) ----------------------------
 const OVERLAP_CHARS = 600;          // A.6 page-break overlap, retrieval context only
@@ -47,7 +59,7 @@ const report = {
   status: 'PENDING',
   documents: [],
   cross_document_references: [],
-  corpus_config_validation: { documents_without_alias_entry: [], aliases_without_document: [], unmapped_note: null },
+  corpus_config_validation: { documents_without_alias_entry: [], aliases_without_document: [], aliases_covered_by_curation_only: [], unmapped_note: null },
   warnings: [],
   blocking_errors: [],
   totals: {},
@@ -76,6 +88,16 @@ function loadOptional(rel, fallback) {
 const OUT = path.join(ROOT, 'build', BRAND);
 const UNITS_DIR = path.join(OUT, 'retrieval-units');
 const SLICES_DIR = path.join(OUT, 'page-slices');
+
+// An absolute --corpus-dir is used as given; a relative one resolves against the
+// repository root, as approved-source-docs/ always has.
+const CORPUS_REL = CORPUS_DIR_FLAG || brandCfg.corpus_dir || 'approved-source-docs';
+const CORPUS_DIR = path.isAbsolute(CORPUS_REL) ? CORPUS_REL : path.join(ROOT, CORPUS_REL);
+if (!existsSync(CORPUS_DIR)) {
+  console.error(`BLOCKED: corpus directory not found: ${CORPUS_DIR}`);
+  process.exit(2);
+}
+console.log(`Corpus: ${CORPUS_DIR}`);
 
 // ---- Redistribution gate (A.5) - fail closed --------------------------------
 const admitted = [];
@@ -214,14 +236,27 @@ const manifestDocs = [];
 let totalPages = 0, totalSlices = 0, totalSliceBytes = 0;
 
 for (const doc of admitted) {
-  const absPath = path.join(ROOT, 'approved-source-docs', doc.filename);
+  // source_path carries a corpus-relative path for foldered corpora (e.g.
+  // "330 GTC/checklist.pdf"). filename remains the flat-folder form. Production's
+  // source-index declares no source_path, so it takes the filename branch unchanged.
+  const relPath = doc.source_path || doc.filename;
+  const absPath = path.join(CORPUS_DIR, relPath);
   if (!existsSync(absPath)) {
-    block('SOURCE_FILE_MISSING', `Declared in source-index.json but not present in approved-source-docs/.`, { document_id: doc.document_id, filename: doc.filename });
+    block('SOURCE_FILE_MISSING', `Declared in the source index but not present in the corpus directory.`, { document_id: doc.document_id, path: relPath, corpus_dir: CORPUS_DIR });
     continue;
   }
   const bytes = readFileSync(absPath);
   const docChecksum = sha256(bytes);
   const sizeBytes = statSync(absPath).size;
+
+  // Where the curator inherited metadata from an already-curated document, the
+  // assertion "this is the same file" must be proven, not trusted. Wrong metadata
+  // is worse than absent metadata.
+  if (doc.expected_source_checksum && doc.expected_source_checksum !== docChecksum) {
+    warn('INHERITED_CHECKSUM_MISMATCH',
+      `Metadata was inherited from another curated entry on the assertion that this is the same document, but the file checksum differs. The inherited title, version and description may describe a different file.`,
+      { document_id: doc.document_id, expected: doc.expected_source_checksum, actual: docChecksum });
+  }
 
   let pages;
   try {
@@ -292,8 +327,11 @@ for (const doc of admitted) {
     // file attributes at upload time - it is never reconstructed from this text.
     const header = [
       `# ${doc.display_title}`,
-      `Document version: ${doc.document_version}`,
-      `Source organization: ${doc.source_organization}`,
+      // Omitted entirely when unset. An unguarded template string writes the literal
+      // text "null" into the retrieval unit, which is then embedded and searched as
+      // if it were document content. Absent metadata is silence, not the word "null".
+      doc.document_version ? `Document version: ${doc.document_version}` : null,
+      doc.source_organization ? `Source organization: ${doc.source_organization}` : null,
       `Page ${p.page_number} of ${pages.length}`,
       p.section_heading ? `Section: ${p.section_heading}` : null,
       doc.models_covered.length ? `Models covered: ${doc.models_covered.join(', ')}` : null,
@@ -503,16 +541,35 @@ for (const doc of admitted) {
 const corpusText = pageMap.map(p => p.normalized_text).join(' ');
 const modelsInCorpus = new Set();
 for (const d of manifestDocs) for (const m of d.models_covered) modelsInCorpus.add(m);
+// Normalized form for alias matching, so casing and spacing differences between the
+// alias table and a document's models_covered do not read as an absent model.
+const normalizedModelsInCorpus = new Set([...modelsInCorpus].map(normalize));
 
 for (const m of modelsInCorpus) {
   const hasAlias = (aliasTable.models || []).some(a => a.canonical_model_name === m || (a.document_designation === m));
   if (!hasAlias) report.corpus_config_validation.documents_without_alias_entry.push(m);
 }
 for (const a of aliasTable.models || []) {
-  const designation = normalize(a.document_designation || a.canonical_model_name);
-  if (!corpusText.includes(designation)) {
+  // Two independent signals of coverage. The curated one is authoritative: an
+  // alias is covered when a document's curated models_covered names it, whether
+  // or not the name survives text extraction. A graphical cover page - the 430
+  // Scuderia owner's manual, for instance - exposes no extractable model name,
+  // so a text-only check would report a correctly scoped document as uncovered
+  // and invite an unnecessary edit to the alias table.
+  //
+  // The text scan is kept as a secondary signal, recorded for diagnostics only.
+  const names = [a.canonical_model_name, a.document_designation].filter(Boolean).map(normalize);
+  const curatedMatch = names.some(n => normalizedModelsInCorpus.has(n));
+  const textMatch = names.some(n => corpusText.includes(n));
+
+  if (!curatedMatch && !textMatch) {
     report.corpus_config_validation.aliases_without_document.push({
       model_id: a.model_id, canonical_model_name: a.canonical_model_name, document_designation: a.document_designation,
+    });
+  } else if (curatedMatch && !textMatch) {
+    report.corpus_config_validation.aliases_covered_by_curation_only.push({
+      model_id: a.model_id, canonical_model_name: a.canonical_model_name,
+      note: 'Covered by a curated models_covered entry. The model name was not found in extracted text, which is expected for documents whose title page is graphical.',
     });
   }
 }
@@ -521,7 +578,7 @@ if (report.corpus_config_validation.documents_without_alias_entry.length) {
     { models: report.corpus_config_validation.documents_without_alias_entry });
 }
 if (report.corpus_config_validation.aliases_without_document.length) {
-  warn('ALIAS_WITHOUT_DOCUMENT', `Alias-table entries point at models no ingested document mentions. Expected while the corpus is small; the alias table must not be silently rewritten.`,
+  warn('ALIAS_WITHOUT_DOCUMENT', `Alias-table entries point at models that no ingested document covers, by either curated models_covered or extracted text. Expected while the corpus is small; the alias table must not be silently rewritten.`,
     { entries: report.corpus_config_validation.aliases_without_document });
 }
 if (!(mappingTable.mappings || []).length) {

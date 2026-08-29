@@ -12,8 +12,9 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
 const css = readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 const appjs = readFileSync(path.join(ROOT, 'public/app.js'), 'utf8');

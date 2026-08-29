@@ -1,0 +1,174 @@
+{
+  "manifest_version": "1.0",
+  "batch": "Ferrari Judging Documents Batch 1",
+  "created": "2026-08-28",
+  "strategy": "single_test_vector_store_with_file_attributes",
+  "records": [
+    {
+      "source_path": "Shared Judging/documenting_your_new_er__fer.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "judge_training_documentation",
+      "pages": 1,
+      "ingest": true
+    },
+    {
+      "source_path": "Shared Judging/ferrari_preservation_class_p.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "preservation_rules",
+      "pages": 6,
+      "ingest": true
+    },
+    {
+      "source_path": "Shared Judging/IAC-PFA-Decisions-15-February-2025.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "judging_rules",
+      "pages": 5,
+      "ingest": true
+    },
+    {
+      "source_path": "Shared Judging/iac_pfa_judging_guidelines__.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "judging_rules",
+      "pages": 1,
+      "ingest": true
+    },
+    {
+      "source_path": "Shared Judging/judging_newer_ferraris__eich.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "judge_training",
+      "pages": 26,
+      "ingest": true
+    },
+    {
+      "source_path": "Shared Judging/judging_older_ferraris__leyd.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "judge_training",
+      "pages": 21,
+      "ingest": true
+    },
+    {
+      "source_path": "Shared Judging/Semiar-for-Judges-2026-2.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "judge_training",
+      "pages": 36,
+      "ingest": true
+    },
+    {
+      "source_path": "330 GTC/330-GTC-GTS-As-Built-Configuration-and-Judging-Notes-Document-Version-8.0-July-2023.pdf",
+      "model": "330 GTC/GTS",
+      "model_family": "330",
+      "scope": "model",
+      "document_type": "as_built_configuration",
+      "pages": 150,
+      "ingest": true
+    },
+    {
+      "source_path": "330 GTC/330-GTC-GTS-Concours-Judging-Checklist-VER-1.pdf",
+      "model": "330 GTC/GTS",
+      "model_family": "330",
+      "scope": "model",
+      "document_type": "judging_checklist",
+      "pages": 4,
+      "ingest": true
+    },
+    {
+      "source_path": "330 GTC/As-Built-Checklist-for-Ferrari-330-GTC-GTS-Version-9.pdf",
+      "model": "330 GTC/GTS",
+      "model_family": "330",
+      "scope": "model",
+      "document_type": "as_built_checklist",
+      "pages": 10,
+      "ingest": true
+    },
+    {
+      "source_path": "330 GTC/iac_pfa_judging_guidelines__.pdf",
+      "model": "ALL",
+      "model_family": "Ferrari",
+      "scope": "shared",
+      "document_type": "judging_rules",
+      "pages": 1,
+      "ingest": false,
+      "skip_reason": "exact duplicate of Shared Judging/iac_pfa_judging_guidelines__.pdf"
+    },
+    {
+      "source_path": "458 Italia/458-Italia-Carrozzeria-Scaglietti-July-2010.pdf",
+      "model": "458 Italia",
+      "model_family": "458",
+      "scope": "model",
+      "document_type": "factory_personalization",
+      "pages": 34,
+      "ingest": true
+    },
+    {
+      "source_path": "458 Italia/458-Italia-Carrozzeria-Sacglietti-Jan-2011.pdf",
+      "model": "458 Italia",
+      "model_family": "458",
+      "scope": "model",
+      "document_type": "factory_personalization_update",
+      "pages": 16,
+      "ingest": true
+    },
+    {
+      "source_path": "F430/F430_SP.pdf",
+      "model": "F430",
+      "model_family": "F430",
+      "scope": "model",
+      "document_type": "spare_parts_catalogue",
+      "pages": 18,
+      "ingest": true
+    },
+    {
+      "source_path": "F430/Owners-Manual-430-Scuderia-ENG.pdf",
+      "model": "430 Scuderia",
+      "model_family": "F430",
+      "scope": "variant",
+      "document_type": "owners_manual",
+      "pages": 138,
+      "ingest": true,
+      "note": "Do not treat as standard F430 documentation"
+    },
+    {
+      "source_path": "599 GTB/Ferrari-Performance-HGTE-95993268.pdf",
+      "model": "599 GTB HGTE",
+      "model_family": "599 GTB",
+      "scope": "variant",
+      "document_type": "factory_hgte_configuration",
+      "pages": 7,
+      "ingest": false,
+      "skip_reason": "image-only scan with effectively no extractable text; preserve original and revisit with searchable source/OCR later"
+    },
+    {
+      "source_path": "F8 Tributo/Ferrari-F8-Tributo-Communication-2019_10_05-21_09_21-UTC.pdf",
+      "model": "F8 Tributo",
+      "model_family": "F8",
+      "scope": "model",
+      "document_type": "factory_personalization",
+      "pages": 71,
+      "ingest": true
+    },
+    {
+      "source_path": "GTC4Lusso/26_09_16_GTC4_LUSSO_T_ENG_1.pdf",
+      "model": "GTC4Lusso T",
+      "model_family": "GTC4Lusso",
+      "scope": "variant",
+      "document_type": "product_information",
+      "pages": 54,
+      "ingest": true,
+      "note": "Variant-specific: GTC4Lusso T"
+    }
+  ]
+}

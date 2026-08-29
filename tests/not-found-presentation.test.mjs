@@ -13,8 +13,15 @@
 import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/* import() takes a URL, not a filesystem path. A Windows absolute path starts with
+   a drive letter, which Node reads as an unsupported 'c:' protocol. pathToFileURL
+   produces the same file:/// URL these paths already resolved to on macOS and
+   Linux, so behaviour there is unchanged. */
+const moduleUrl = (rel) => pathToFileURL(path.join(REPO, rel)).href;
 
 const BUNDLE = mkdtempSync(path.join(tmpdir(), 'nf-bundle-'));
 mkdirSync(path.join(BUNDLE, 'build/ferrari'), { recursive: true });
@@ -53,9 +60,9 @@ function stub(results, answer) {
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 
-const { issueSession } = await import(`${REPO}/src/services/session.mjs`);
+const { issueSession } = await import(moduleUrl('src/services/session.mjs'));
 const cookie = issueSession().split(';')[0];
-const { default: ask } = await import(`${REPO}/netlify/functions/ask.mjs`);
+const { default: ask } = await import(moduleUrl('netlify/functions/ask.mjs'));
 const askLive = async (body) => (await ask({
   method: 'POST', url: 'https://x/api/ask',
   headers: { get: (k) => (k === 'cookie' ? cookie : null) },
@@ -139,7 +146,7 @@ check('the diagnostics record how many pages were reviewed',
 check('no diagnostics reach the judge', wheel.warnings, []);
 
 /* ---------- verification alone must not promote a page ---------- */
-const { statesNotFound } = await import(`${REPO}/src/services/answer-policy.mjs`);
+const { statesNotFound } = await import(moduleUrl('src/services/answer-policy.mjs'));
 check('page verification alone does not create supporting evidence',
   wheel.sources_reviewed.every(s => s.page_verified) && wheel.sources.length === 0, true);
 

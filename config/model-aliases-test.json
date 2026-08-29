@@ -1,0 +1,140 @@
+{
+  "_comment": "CURATED TEST ALIASES (Addendum A.2 Tier 2, A.11). Batch 1 only. Editorial equivalence claims are conservative; year ranges for newly added models remain unset until separately curator-approved. Nothing from transcription-vocabulary.json is promoted here.",
+  "schema_version": "1.0",
+  "brand": "ferrari",
+  "models": [
+    {
+      "model_id": "ferrari-330-gtc",
+      "brand": "ferrari",
+      "canonical_model_name": "330 GTC",
+      "document_designation": "330 GTC",
+      "model_coverage": "330 GTC/GTS",
+      "aliases": [
+        "330GTC",
+        "330 G.T.C.",
+        "three thirty GTC"
+      ],
+      "approved_year_start": 1966,
+      "approved_year_end": 1968,
+      "year_range_authoritative": false,
+      "notes": "Covered by the 330 GTC/GTS checklist and As-Built v8.0.",
+      "active": true
+    },
+    {
+      "model_id": "ferrari-330-gts",
+      "brand": "ferrari",
+      "canonical_model_name": "330 GTS",
+      "document_designation": "330 GTS",
+      "model_coverage": "330 GTC/GTS",
+      "aliases": [
+        "330GTS",
+        "330 spyder",
+        "330 Spider",
+        "three thirty GTS"
+      ],
+      "approved_year_start": 1966,
+      "approved_year_end": 1968,
+      "year_range_authoritative": false,
+      "notes": "Covered by the 330 GTC/GTS checklist and As-Built v8.0.",
+      "active": true
+    },
+    {
+      "model_id": "ferrari-330-gtc-gts-corpus",
+      "brand": "ferrari",
+      "canonical_model_name": "330 GTC/GTS",
+      "document_designation": "330 GTC/GTS",
+      "model_coverage": "330 GTC/GTS",
+      "aliases": [],
+      "approved_year_start": 1966,
+      "approved_year_end": 1968,
+      "year_range_authoritative": false,
+      "notes": "Batch 1 corpus designation bridge only. Judges should continue to select 330 GTC or 330 GTS separately.",
+      "active": false
+    },
+    {
+      "model_id": "ferrari-458-italia",
+      "brand": "ferrari",
+      "canonical_model_name": "458 Italia",
+      "document_designation": "458 Italia",
+      "model_coverage": "458 Italia",
+      "aliases": [
+        "458Italia",
+        "Ferrari 458 Italia"
+      ],
+      "approved_year_start": null,
+      "approved_year_end": null,
+      "year_range_authoritative": false,
+      "notes": "Batch 1 test corpus. Year range has not yet been curator-approved.",
+      "active": true
+    },
+    {
+      "model_id": "ferrari-f430",
+      "brand": "ferrari",
+      "canonical_model_name": "F430",
+      "document_designation": "F430",
+      "model_coverage": "F430",
+      "aliases": [
+        "F 430",
+        "F-430",
+        "Ferrari F430"
+      ],
+      "approved_year_start": null,
+      "approved_year_end": null,
+      "year_range_authoritative": false,
+      "notes": "Batch 1 test corpus. Standard F430 documentation only; 430 Scuderia is handled separately.",
+      "active": true
+    },
+    {
+      "model_id": "ferrari-430-scuderia",
+      "brand": "ferrari",
+      "canonical_model_name": "430 Scuderia",
+      "document_designation": "430 Scuderia",
+      "model_coverage": "430 Scuderia",
+      "aliases": [
+        "430Scuderia",
+        "F430 Scuderia",
+        "F 430 Scuderia",
+        "Ferrari 430 Scuderia"
+      ],
+      "approved_year_start": null,
+      "approved_year_end": null,
+      "year_range_authoritative": false,
+      "notes": "Batch 1 test corpus. Variant-specific; must not be treated as standard F430 documentation.",
+      "active": true
+    },
+    {
+      "model_id": "ferrari-f8-tributo",
+      "brand": "ferrari",
+      "canonical_model_name": "F8 Tributo",
+      "document_designation": "F8 Tributo",
+      "model_coverage": "F8 Tributo",
+      "aliases": [
+        "F8Tributo",
+        "F 8 Tributo",
+        "Ferrari F8 Tributo"
+      ],
+      "approved_year_start": null,
+      "approved_year_end": null,
+      "year_range_authoritative": false,
+      "notes": "Batch 1 test corpus. Year range has not yet been curator-approved.",
+      "active": true
+    },
+    {
+      "model_id": "ferrari-gtc4lusso-t",
+      "brand": "ferrari",
+      "canonical_model_name": "GTC4Lusso T",
+      "document_designation": "GTC4Lusso T",
+      "model_coverage": "GTC4Lusso T",
+      "aliases": [
+        "GTC4 Lusso T",
+        "GTC4LussoT",
+        "Ferrari GTC4Lusso T"
+      ],
+      "approved_year_start": null,
+      "approved_year_end": null,
+      "year_range_authoritative": false,
+      "notes": "Batch 1 test corpus. Variant-specific GTC4Lusso T documentation.",
+      "active": true
+    }
+  ]
+}

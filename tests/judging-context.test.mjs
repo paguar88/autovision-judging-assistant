@@ -12,14 +12,27 @@
 import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/* import() takes a URL, not a filesystem path. A Windows absolute path starts with
+   a drive letter, which Node reads as an unsupported 'c:' protocol. pathToFileURL
+   produces the same file:/// URL these paths already resolved to on macOS and
+   Linux, so behaviour there is unchanged. */
+const moduleUrl = (rel) => pathToFileURL(path.join(REPO, rel)).href;
 
 const BUNDLE = mkdtempSync(path.join(tmpdir(), 'ctx-bundle-'));
 mkdirSync(path.join(BUNDLE, 'build/ferrari'), { recursive: true });
+mkdirSync(path.join(BUNDLE, 'build/ferrari-test'), { recursive: true });
 mkdirSync(path.join(BUNDLE, 'config'), { recursive: true });
 for (const f of readdirSync(path.join(REPO, 'build/ferrari')).filter(f => f.endsWith('.json')))
   copyFileSync(path.join(REPO, 'build/ferrari', f), path.join(BUNDLE, 'build/ferrari', f));
+// The ferrari-test brand reads config/model-aliases-test.json, the only alias
+// table carrying model_coverage. corpus() loads a brand's manifest eagerly, so
+// its build artifacts have to be present for resolveModel to reach that table.
+for (const f of readdirSync(path.join(REPO, 'build/ferrari-test')).filter(f => f.endsWith('.json')))
+  copyFileSync(path.join(REPO, 'build/ferrari-test', f), path.join(BUNDLE, 'build/ferrari-test', f));
 for (const f of readdirSync(path.join(REPO, 'config')).filter(f => f.endsWith('.json')))
   copyFileSync(path.join(REPO, 'config', f), path.join(BUNDLE, 'config', f));
 
@@ -62,9 +75,9 @@ function stub(results, answer) {
   };
 }
 
-const { issueSession } = await import(`${REPO}/src/services/session.mjs`);
+const { issueSession } = await import(moduleUrl('src/services/session.mjs'));
 const cookie = issueSession().split(';')[0];
-const { default: ask } = await import(`${REPO}/netlify/functions/ask.mjs`);
+const { default: ask } = await import(moduleUrl('netlify/functions/ask.mjs'));
 const askLive = async (body) => {
   const res = await ask({
     method: 'POST', url: 'https://x/api/ask',
@@ -322,6 +335,35 @@ check('an already-capitalised question is unchanged',
   P.displayQuestion('Are these wheels correct?'), 'Are these wheels correct?');
 check('the stored question is the raw text, not the display form',
   /\{ question, category: state\.category \}/.test(appjs), true);
+
+/* ---- Slice 1: curator-owned model_coverage (A.11) ----
+   The value is read verbatim off the curated alias record. Judge-facing identity
+   stays the judge's car; the coverage value is an internal retrieval key only. */
+const { resolveModel } = await import(moduleUrl('src/services/vehicle-context.mjs'));
+
+check('330 GTC resolves to the shared corpus coverage under ferrari-test',
+  resolveModel('330 GTC', 'ferrari-test').model_coverage, '330 GTC/GTS');
+check('an alias reaches the same coverage and still reports the matched alias',
+  [resolveModel('F430 Scuderia', 'ferrari-test').model_coverage,
+   resolveModel('F430 Scuderia', 'ferrari-test').matched_alias],
+  ['430 Scuderia', 'F430 Scuderia']);
+check('the production alias table carries no coverage, and none is invented',
+  resolveModel('330 GTC').model_coverage, null);
+check('the disabled 330 GTC/GTS bridge stays unresolvable despite valid coverage',
+  resolveModel('330 GTC/GTS', 'ferrari-test').resolved, false);
+
+/* ---- Slice 2: modelCoverage carried to the retrieval layer, not yet applied ---- */
+const askjs = readFileSync(path.join(REPO, 'netlify/functions/ask.mjs'), 'utf8');
+const judgingjs = readFileSync(path.join(REPO, 'src/services/openai-judging.mjs'), 'utf8');
+
+check('coverage is taken from the resolved model, not derived',
+  /modelCoverage = resolved\.model_coverage;/.test(askjs)
+  && !/modelCoverage\s*=\s*resolved\.(canonical_model_name|document_designation)/.test(askjs), true);
+check('ask.mjs passes coverage into askJudging',
+  /askJudging\(\{[\s\S]*?\bmodelCoverage,[\s\S]*?\}\)/.test(askjs), true);
+check('askJudging accepts coverage and does not yet apply it',
+  /export async function askJudging\(\{[^}]*\bmodelCoverage\b[^}]*\}\)/.test(judgingjs)
+  && !/filters/.test(judgingjs), true);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

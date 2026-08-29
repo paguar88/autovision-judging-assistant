@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Generated Stage 1 artifacts. netlify.toml rebuilds these on every deploy
+# ("npm run ingest"), so they are reproduced from approved-source-docs/ and must
+# not be committed. Includes page slices, which are large.
+build/
+
+# Secrets. The repository stores only the NAMES of environment variables.
+.env
+.env.*
+!.env.example
+
+# Batch 1 test corpus. These PDFs live outside the repository by design: they are
+# ~109 MB, and netlify.toml rebuilds from approved-source-docs/ on every deploy,
+# so committing them would enter both git history and every production build.
+# Ingest them with: npm run ingest:test -- --corpus-dir "<path to local folder>"
+Ferrari Judging Documents/
+_archive/
+*.zip
+
+# Extraction output
+title-pages.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

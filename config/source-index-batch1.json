@@ -1,0 +1,764 @@
+{
+  "_comment": [
+    "CURATOR-OWNED INPUT (Addendum A.2 Tier 2, A.8).",
+    "Metadata was read from the documents themselves via scripts/extract-title-pages.mjs and",
+    "confirmed by the curator. No value is derived from a filename. Where a document states only",
+    "a month and year, publication_date is null and only effective_year is set — a first-of-month",
+    "placeholder would be a fabricated date. Remaining nulls are genuinely unstated in the sources."
+  ],
+  "schema_version": "1.0",
+  "brand": "ferrari",
+  "corpus_status": "test",
+  "corpus_status_note": "Batch 1 test corpus. NOT the production corpus and NOT the Ferrari Judging Committee approved production set. Ingested to a separate test vector store under brand key \"ferrari-test\". The live 330 GTC beta is unaffected.",
+  "curator": "Autovision Studios",
+  "last_updated": "2026-08-28",
+  "derived_from": "Ferrari-Source-Manifest-Batch-1.json",
+  "documents": [
+    {
+      "document_id": "ferrari-documenting-your-new-er-fer",
+      "filename": "documenting_your_new_er__fer.pdf",
+      "source_path": "Shared Judging/documenting_your_new_er__fer.pdf",
+      "display_title": "Documenting Your New(er) Ferrari",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": null,
+      "source_organization": null,
+      "source_type": "judge_training_documentation",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "model_family": "Ferrari",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Guidance for documenting factory configuration, options and authenticity of newer Ferraris.",
+      "declared_page_count": 1,
+      "notes": "Authored by David Eichenbaum, IAC/PFA member. No publication date or version stated in the document.",
+      "_curator_todo": [
+        "document_version",
+        "publication_date",
+        "effective_year",
+        "source_organization"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "author",
+          "display_description"
+        ]
+      },
+      "author": "David Eichenbaum"
+    },
+    {
+      "document_id": "ferrari-ferrari-preservation-class-p",
+      "filename": "ferrari_preservation_class_p.pdf",
+      "source_path": "Shared Judging/ferrari_preservation_class_p.pdf",
+      "display_title": "The Ferrari Preservation Class",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": null,
+      "source_organization": "International Advisory Council for the Preservation of the Ferrari Automobile",
+      "source_type": "preservation_rules",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "model_family": "Ferrari",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Guidance on originality, preservation philosophy, maintenance and judging of Preservation-class Ferraris.",
+      "declared_page_count": 6,
+      "notes": "Authored by Donovan Leyden, Chairman for Preservation. No publication date or version stated in the document.",
+      "_curator_todo": [
+        "document_version",
+        "publication_date",
+        "effective_year"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "author",
+          "source_organization",
+          "display_description"
+        ]
+      },
+      "author": "Donovan Leyden"
+    },
+    {
+      "document_id": "ferrari-iac-pfa-decisions-15-february-2025",
+      "filename": "IAC-PFA-Decisions-15-February-2025.pdf",
+      "source_path": "Shared Judging/IAC-PFA-Decisions-15-February-2025.pdf",
+      "display_title": "IAC/PFA Decisions",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": "2025-02-15",
+      "effective_year": 2025,
+      "source_organization": "IAC/PFA",
+      "source_type": "judging_rules",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "model_family": "Ferrari",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Current IAC/PFA judging decisions and policy interpretations.",
+      "declared_page_count": 5,
+      "notes": null,
+      "_curator_todo": [
+        "document_version"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "publication_date",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-iac-pfa-judging-guidelines",
+      "filename": "iac_pfa_judging_guidelines__.pdf",
+      "source_path": "Shared Judging/iac_pfa_judging_guidelines__.pdf",
+      "display_title": "IAC/PFA Judging Guidelines",
+      "document_version": "1 December 2015",
+      "version_normalized": "2015-12-01",
+      "publication_date": "2015-12-01",
+      "effective_year": 2015,
+      "source_organization": "IAC/PFA",
+      "source_type": "judging_rules",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "model_family": "Ferrari",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "IAC/PFA concours judging guidelines covering judging philosophy, team structure, the 100-point scoring basis, deduction range, award thresholds, and eligibility of replacement and safety items.",
+      "declared_page_count": 1,
+      "notes": null,
+      "expected_source_checksum": "7bc23f307ce95992609f81c353207dbbce18381adef6102166a28facff903669",
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "inherited_from": "iacpfa-judging-guidelines",
+        "inherited_fields": [
+          "display_title",
+          "document_version",
+          "version_normalized",
+          "publication_date",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ],
+        "inherit_verification": "Curator asserts this is the same document already curated in production. expected_source_checksum is the SHA-256 of the production file; ingestion warns INHERITED_CHECKSUM_MISMATCH if the Batch 1 file differs."
+      }
+    },
+    {
+      "document_id": "ferrari-judging-newer-ferraris-eich",
+      "filename": "judging_newer_ferraris__eich.pdf",
+      "source_path": "Shared Judging/judging_newer_ferraris__eich.pdf",
+      "display_title": "Judging Newer Ferraris",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": "2018-01-25",
+      "effective_year": 2018,
+      "source_organization": null,
+      "source_type": "judge_training",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "model_family": "Ferrari",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Judge-training material focused on authenticity and configuration of newer Ferraris.",
+      "declared_page_count": 26,
+      "notes": null,
+      "_curator_todo": [
+        "document_version",
+        "source_organization"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "author",
+          "publication_date",
+          "effective_year",
+          "display_description"
+        ]
+      },
+      "author": "David Eichenbaum"
+    },
+    {
+      "document_id": "ferrari-judging-older-ferraris-leyd",
+      "filename": "judging_older_ferraris__leyd.pdf",
+      "source_path": "Shared Judging/judging_older_ferraris__leyd.pdf",
+      "display_title": "Judging Older Ferraris",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": null,
+      "source_organization": null,
+      "source_type": "judge_training",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "model_family": "Ferrari",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Judge-training material addressing preparation and authenticity assessment of older Ferraris.",
+      "declared_page_count": 21,
+      "notes": "No publication date or version established from the document extraction.",
+      "_curator_todo": [
+        "document_version",
+        "publication_date",
+        "effective_year",
+        "source_organization"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-semiar-for-judges-2026-2",
+      "filename": "Semiar-for-Judges-2026-2.pdf",
+      "source_path": "Shared Judging/Semiar-for-Judges-2026-2.pdf",
+      "display_title": "Tenth Annual Seminar for Judges: Judging Challenges - Old and New",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": "2026-02-13",
+      "effective_year": 2026,
+      "source_organization": "IAC/PFA",
+      "source_type": "judge_training",
+      "scope": "brand_wide",
+      "models_covered": [],
+      "model_family": "Ferrari",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Judge-training seminar addressing judging challenges involving older and newer Ferraris.",
+      "declared_page_count": 36,
+      "notes": "Filename misspells \"Seminar\". Judge-facing title is corrected; the file itself is not renamed.",
+      "_curator_todo": [
+        "document_version"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "publication_date",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-330-gtc-gts-as-built-configuration-and-judging-notes-document-version-8",
+      "filename": "330-GTC-GTS-As-Built-Configuration-and-Judging-Notes-Document-Version-8.0-July-2023.pdf",
+      "source_path": "330 GTC/330-GTC-GTS-As-Built-Configuration-and-Judging-Notes-Document-Version-8.0-July-2023.pdf",
+      "display_title": "330 GTC/GTS As-Built Configuration, Authenticity, and Judging Notes",
+      "document_version": "8.0",
+      "version_normalized": "8.0",
+      "publication_date": null,
+      "effective_year": 2023,
+      "source_organization": "IAC/PFA",
+      "source_type": "as_built_configuration",
+      "scope": "model_specific",
+      "models_covered": [
+        "330 GTC/GTS"
+      ],
+      "model_family": "330",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [
+        "ferrari-as-built-checklist-for-ferrari-330-gtc-gts-version-9",
+        "ferrari-330-gtc-gts-concours-judging-checklist-ver-1"
+      ],
+      "declared_cross_references": [],
+      "display_description": "Photographic and descriptive reference to how 330 GTC and GTS cars were originally built, covering exterior, interior, and engine and chassis configuration, authenticity, and judging notes.",
+      "declared_page_count": 150,
+      "notes": "The document states only \"July 2023\". Production records 2023-07-01; that day is not stated in the source, so Batch 1 carries null and retains effective_year 2023.",
+      "expected_source_checksum": "62a4a8031c2651807b15651d53021ecd844129dad100b3a4290f83c7f80337c7",
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "inherited_from": "ferrari-330-gtc-gts-as-built",
+        "inherited_fields": [
+          "display_title",
+          "document_version",
+          "version_normalized",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ],
+        "inherit_verification": "Curator asserts this is the same document already curated in production. expected_source_checksum is the SHA-256 of the production file; ingestion warns INHERITED_CHECKSUM_MISMATCH if the Batch 1 file differs.",
+        "curator_overrides": [
+          "publication_date"
+        ],
+        "override_reason": "The document states only \"July 2023\". Production records 2023-07-01; that day is not stated in the source, so Batch 1 carries null and retains effective_year 2023."
+      },
+      "_curator_todo": [
+        "publication_date"
+      ]
+    },
+    {
+      "document_id": "ferrari-330-gtc-gts-concours-judging-checklist-ver-1",
+      "filename": "330-GTC-GTS-Concours-Judging-Checklist-VER-1.pdf",
+      "source_path": "330 GTC/330-GTC-GTS-Concours-Judging-Checklist-VER-1.pdf",
+      "display_title": "330 GTC/GTS Concours Judging Checklist",
+      "document_version": "VER 1",
+      "version_normalized": "1",
+      "publication_date": null,
+      "effective_year": null,
+      "source_organization": "IAC/PFA",
+      "source_type": "judging_checklist",
+      "scope": "model_specific",
+      "models_covered": [
+        "330 GTC/GTS"
+      ],
+      "model_family": "330",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [
+        "ferrari-330-gtc-gts-as-built-configuration-and-judging-notes-document-version-8"
+      ],
+      "declared_cross_references": [
+        {
+          "target_document_id": "ferrari-330-gtc-gts-as-built-configuration-and-judging-notes-document-version-8",
+          "required_version": "8.0",
+          "required_publication": "July 2023",
+          "reference_kind": "page_reference_index",
+          "note": "Carried forward from the production source-index. Checklist line items carry trailing page numbers indexing into the As-Built document; page attribution depends on the referenced version being exactly 8.0."
+        }
+      ],
+      "display_description": "Observation checklist of major Exterior, Interior, and Engine and Chassis items reviewed when a 330 GTC or GTS is judged in an IAC/PFA concours. Each item carries a reference page number into the As-Built document.",
+      "declared_page_count": 4,
+      "notes": "Publication date and effective year are not established for the checklist itself. The July 2023 date it cites belongs to the referenced As-Built v8.0 document.",
+      "_curator_todo": [
+        "publication_date",
+        "effective_year"
+      ],
+      "expected_source_checksum": "56694ec59f5c8d19e34256c453771591504005d2de5246749096a3767d84b8cd",
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "inherited_from": "ferrari-330-gtc-gts-checklist",
+        "inherited_fields": [
+          "display_title",
+          "document_version",
+          "version_normalized",
+          "source_organization",
+          "display_description"
+        ],
+        "inherit_verification": "Curator asserts this is the same document already curated in production. expected_source_checksum is the SHA-256 of the production file; ingestion warns INHERITED_CHECKSUM_MISMATCH if the Batch 1 file differs."
+      }
+    },
+    {
+      "document_id": "ferrari-as-built-checklist-for-ferrari-330-gtc-gts-version-9",
+      "filename": "As-Built-Checklist-for-Ferrari-330-GTC-GTS-Version-9.pdf",
+      "source_path": "330 GTC/As-Built-Checklist-for-Ferrari-330-GTC-GTS-Version-9.pdf",
+      "display_title": "As-Built Checklist for Ferrari 330 GTC/GTS",
+      "document_version": "9",
+      "version_normalized": "9",
+      "publication_date": null,
+      "effective_year": 2025,
+      "source_organization": "IAC/PFA",
+      "source_type": "as_built_checklist",
+      "scope": "model_specific",
+      "models_covered": [
+        "330 GTC/GTS"
+      ],
+      "model_family": "330",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [
+        "ferrari-330-gtc-gts-as-built-configuration-and-judging-notes-document-version-8"
+      ],
+      "declared_cross_references": [],
+      "display_description": "Checklist of important configuration items used to assess original 330 GTC/GTS build specification.",
+      "declared_page_count": 10,
+      "notes": "Document states edition February 2025. No exact day stated, so publication_date remains null.",
+      "_curator_todo": [
+        "publication_date"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "document_version",
+          "version_normalized",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-458-italia-carrozzeria-scaglietti-july-2010",
+      "filename": "458-Italia-Carrozzeria-Scaglietti-July-2010.pdf",
+      "source_path": "458 Italia/458-Italia-Carrozzeria-Scaglietti-July-2010.pdf",
+      "display_title": "458 Italia Carrozzeria Scaglietti Personalization Programme",
+      "document_version": "July 2010",
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": 2010,
+      "source_organization": "Ferrari S.p.A.",
+      "source_type": "factory_personalization",
+      "scope": "model_specific",
+      "models_covered": [
+        "458 Italia"
+      ],
+      "model_family": "458",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Factory personalization programme documenting available 458 Italia configuration and personalization options.",
+      "declared_page_count": 34,
+      "notes": null,
+      "_curator_todo": [
+        "publication_date"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "document_version",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-458-italia-carrozzeria-sacglietti-jan-2011",
+      "filename": "458-Italia-Carrozzeria-Sacglietti-Jan-2011.pdf",
+      "source_path": "458 Italia/458-Italia-Carrozzeria-Sacglietti-Jan-2011.pdf",
+      "display_title": "458 Italia Carrozzeria Scaglietti Personalization Programme",
+      "document_version": "January 2011",
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": 2011,
+      "source_organization": "Ferrari S.p.A.",
+      "source_type": "factory_personalization_update",
+      "scope": "model_specific",
+      "models_covered": [
+        "458 Italia"
+      ],
+      "model_family": "458",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Updated factory personalization programme for the 458 Italia.",
+      "declared_page_count": 16,
+      "notes": "Filename misspells \"Scaglietti\" as \"Sacglietti\". Judge-facing title is corrected; the PDF filename and source_path are deliberately left unchanged.",
+      "_curator_todo": [
+        "publication_date"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "document_version",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-f430-sp",
+      "filename": "F430_SP.pdf",
+      "source_path": "F430/F430_SP.pdf",
+      "display_title": "Ferrari F430 Spare Parts Catalogue",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": null,
+      "source_organization": "Ferrari S.p.A.",
+      "source_type": "spare_parts_catalogue",
+      "scope": "model_specific",
+      "models_covered": [
+        "F430"
+      ],
+      "model_family": "F430",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Factory parts catalogue identifying F430 components, assemblies and part numbers.",
+      "declared_page_count": 18,
+      "notes": null,
+      "_curator_todo": [
+        "document_version",
+        "publication_date",
+        "effective_year"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-owners-manual-430-scuderia-eng",
+      "filename": "Owners-Manual-430-Scuderia-ENG.pdf",
+      "source_path": "F430/Owners-Manual-430-Scuderia-ENG.pdf",
+      "display_title": "Ferrari 430 Scuderia Owner's Manual",
+      "document_version": null,
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": null,
+      "source_organization": "Ferrari S.p.A.",
+      "source_type": "owners_manual",
+      "scope": "model_specific",
+      "models_covered": [
+        "430 Scuderia"
+      ],
+      "model_family": "F430",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Factory owner's manual covering operation, safety, maintenance and vehicle systems for the 430 Scuderia.",
+      "declared_page_count": 138,
+      "notes": "Do not treat as standard F430 documentation",
+      "_curator_todo": [
+        "document_version",
+        "publication_date",
+        "effective_year"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-ferrari-f8-tributo-communication-2019-10-05-21-09-21-utc",
+      "filename": "Ferrari-F8-Tributo-Communication-2019_10_05-21_09_21-UTC.pdf",
+      "source_path": "F8 Tributo/Ferrari-F8-Tributo-Communication-2019_10_05-21_09_21-UTC.pdf",
+      "display_title": "Ferrari F8 Tributo Personalization Programme",
+      "document_version": "March 2019",
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": 2019,
+      "source_organization": "Ferrari S.p.A.",
+      "source_type": "factory_personalization",
+      "scope": "model_specific",
+      "models_covered": [
+        "F8 Tributo"
+      ],
+      "model_family": "F8",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Factory personalization programme for F8 Tributo equipment, finishes and configuration options.",
+      "declared_page_count": 71,
+      "notes": "Document states March 2019. The filename timestamp (2019_10_05) is an export artifact and was not used.",
+      "_curator_todo": [
+        "publication_date"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "document_version",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    },
+    {
+      "document_id": "ferrari-26-09-16-gtc4-lusso-t-eng-1",
+      "filename": "26_09_16_GTC4_LUSSO_T_ENG_1.pdf",
+      "source_path": "GTC4Lusso/26_09_16_GTC4_LUSSO_T_ENG_1.pdf",
+      "display_title": "Ferrari GTC4Lusso T Product Information",
+      "document_version": "September 2016",
+      "version_normalized": null,
+      "publication_date": null,
+      "effective_year": 2016,
+      "source_organization": "Ferrari S.p.A.",
+      "source_type": "product_information",
+      "scope": "model_specific",
+      "models_covered": [
+        "GTC4Lusso T"
+      ],
+      "model_family": "GTC4Lusso",
+      "brand": "ferrari",
+      "redistribution_status": "approved",
+      "redistribution_basis": "Curator-approved for private development and test-corpus use based on public availability through IAC/PFA. Not approved for production deployment. Ferrari Judging Committee confirmation pending.",
+      "active": true,
+      "supersedes": null,
+      "superseded_by": null,
+      "related_documents": [],
+      "declared_cross_references": [],
+      "display_description": "Factory product information for the GTC4Lusso T.",
+      "declared_page_count": 54,
+      "notes": "Variant-specific: GTC4Lusso T Document states September 2016, resolving the ambiguous 26_09_16 filename token as DD_MM_YY.",
+      "_curator_todo": [
+        "publication_date"
+      ],
+      "_field_provenance": {
+        "curator_directive": [
+          "redistribution_status",
+          "redistribution_basis"
+        ],
+        "document_derived": [
+          "display_title",
+          "document_version",
+          "effective_year",
+          "source_organization",
+          "display_description"
+        ]
+      }
+    }
+  ],
+  "_excluded_from_batch": [
+    {
+      "source_path": "330 GTC/iac_pfa_judging_guidelines__.pdf",
+      "reason": "exact duplicate of Shared Judging/iac_pfa_judging_guidelines__.pdf"
+    },
+    {
+      "source_path": "599 GTB/Ferrari-Performance-HGTE-95993268.pdf",
+      "reason": "image-only scan with effectively no extractable text; preserve original and revisit with searchable source/OCR later"
+    }
+  ],
+  "_flags": [
+    {
+      "code": "VERSION_RELATIONSHIP_UNRESOLVED",
+      "document_ids": [
+        "ferrari-330-gtc-gts-as-built-configuration-and-judging-notes-document-version-8",
+        "ferrari-as-built-checklist-for-ferrari-330-gtc-gts-version-9"
+      ],
+      "detail": "As-Built Configuration v8.0 and As-Built Checklist Version 9 both present and both active. Linked as related documents. supersedes/superseded_by left null pending a curator decision (A.8)."
+    }
+  ]
+}

@@ -13,7 +13,8 @@ const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').t
 
 /**
  * @returns {{resolved:boolean, canonical_model_name?:string, document_designation?:string,
- *            matched_alias?:string|null, model_id?:string, message?:string}}
+ *            model_coverage?:string|null, matched_alias?:string|null, model_id?:string,
+ *            message?:string}}
  */
 export function resolveModel(spoken, brand = 'ferrari') {
   const { aliases } = corpus(brand);
@@ -29,6 +30,12 @@ export function resolveModel(spoken, brand = 'ferrari') {
         model_id: m.model_id,
         canonical_model_name: m.canonical_model_name,
         document_designation: m.document_designation,
+        // Curator-owned retrieval key (Tier 2). Read verbatim off the alias record
+        // and never derived - not from the canonical name, the document
+        // designation, the model family, or corpus documents. A missing value
+        // stays null so the caller can fail closed; a fallback here would
+        // silently filter for the wrong set of documents.
+        model_coverage: m.model_coverage ?? null,
         matched_alias: norm(hit) === norm(m.canonical_model_name) ? null : hit,
         approved_year_start: m.approved_year_start,
         approved_year_end: m.approved_year_end,

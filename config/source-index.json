@@ -426,6 +426,14 @@
           "printed_start": 4
         }
       ],
+      "page_text_overrides": [
+        {
+          "physical_page": 17,
+          "expected_original_text_sha256": "9da976b35c03d3b3fa62e1d8e6d55f37df47a1954143416814c236ba193a376f",
+          "reason": "The multi-column wheel-options table was flattened into the wrong reading order by PDF text extraction. This transcription preserves the visually verified row and code associations.",
+          "text": "RACING EXTERIOR INTERIOR EQUIPMENT\nEXTERIOR AND COLOURS\n20” diamond finished forged rim (Modis code RSFD)\nPlease note that a further variant of the sport forged wheels is now available for Ferrari 458 Italia.\nThe new rims have the same style of the painted forged wheels (Modis code RMSV) but they are enriched with a sporty two-tone aspect; Iron Grey Metallic 780 painting for the inner part of the spokes and diamond polishing treatment for the outer part of the rim.\nBelow we summarize the optional wheels available for Ferrari 458 Italia.\n18\nStandard rim\nStandard dark chromed rim\n(Modis Code RICS)\nSilver painted forged rim\n(Modis code RMSV)\nDiamond finished forged rim\n(Modis code RSFD)\nDark Grey Metallic 780 painted forged rim\n(Special equipment)\nJUNE ORDERS\nAll Personalization & Atelier Communications are available on the MODISCS portal\nRelease July 2010"
+        }
+      ],
       "model_family": "458",
       "brand": "ferrari",
       "redistribution_status": "approved",

@@ -30,6 +30,7 @@ import { PDFDocument } from 'pdf-lib';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { fileURLToPath } from 'node:url';
 import { validatePrintedPageRanges, printedPageFor } from '../src/services/printed-pages.mjs';
+import { validatePageTextOverrides, applyPageTextOverrides } from '../src/services/page-text-overrides.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -60,6 +61,9 @@ const report = {
   status: 'PENDING',
   documents: [],
   cross_document_references: [],
+  // Audit of curator page-text overrides. Checksums only - the report records THAT
+  // a page was transcribed and why, never a second copy of the transcription.
+  page_text_overrides: [],
   corpus_config_validation: { documents_without_alias_entry: [], aliases_without_document: [], aliases_covered_by_curation_only: [], unmapped_note: null },
   warnings: [],
   blocking_errors: [],
@@ -234,7 +238,7 @@ function harvestTerms(text) {
 const pageMap = [];
 const retrievalUnits = [];
 const manifestDocs = [];
-let totalPages = 0, totalSlices = 0, totalSliceBytes = 0;
+let totalPages = 0, totalSlices = 0, totalSliceBytes = 0, totalOverrides = 0;
 
 for (const doc of admitted) {
   // source_path carries a corpus-relative path for foldered corpora (e.g.
@@ -266,6 +270,33 @@ for (const doc of admitted) {
     block('TEXT_EXTRACTION_FAILED', `Could not extract a text layer: ${e.message}`, { document_id: doc.document_id });
     continue;
   }
+
+  // Curator page-text overrides (Tier 2) are applied IMMEDIATELY after extraction,
+  // before the empty-page check, folio and heading detection, the page map, overlap
+  // spans, retrieval units and vocabulary harvesting. Applying them later would
+  // leave the mis-ordered extraction visible to whichever stage ran first.
+  const overrideErrors = validatePageTextOverrides(doc.page_text_overrides, { declaredPageCount: pages.length });
+  if (overrideErrors.length) {
+    block('INVALID_PAGE_TEXT_OVERRIDE', overrideErrors.join('; '), { document_id: doc.document_id });
+    continue;
+  }
+  const overrideAudit = applyPageTextOverrides(pages, doc.page_text_overrides, doc.document_id);
+  report.page_text_overrides.push(...overrideAudit);
+
+  // Source drift blocks. The transcription was verified against one exact
+  // extraction; if the page no longer produces it, the PDF or the extractor has
+  // changed and the curator must re-verify rather than have software guess.
+  const drifted = overrideAudit.filter(a => a.drift);
+  if (drifted.length) {
+    block('PAGE_TEXT_OVERRIDE_SOURCE_DRIFT',
+      `The extracted text of an overridden page no longer matches the extraction the curated transcription was verified against. The page was left unmodified.`,
+      { document_id: doc.document_id,
+        pages: drifted.map(a => ({ physical_page: a.physical_page,
+          expected_original_text_sha256: a.expected_original_text_sha256,
+          actual_original_text_sha256: a.actual_original_text_sha256 })) });
+    continue;
+  }
+  totalOverrides += overrideAudit.filter(a => a.applied).length;
 
   // Text-layer sanity: a scanned PDF must not be silently ingested as empty units.
   const emptyPages = pages.filter(p => p.text.replace(/\s/g, '').length < 15).map(p => p.page_number);
@@ -342,6 +373,7 @@ for (const doc of admitted) {
       document_id: doc.document_id,
       page_number: p.page_number,
       printed_page_number: printedOf(p.page_number),
+      curator_overridden: p.curator_overridden === true,
       extracted_text: p.text,
       normalized_text: normalize(p.text),
       section_heading: p.section_heading,
@@ -661,6 +693,8 @@ report.totals = {
   page_slices_generated: totalSlices,
   page_slice_bytes: totalSliceBytes,
   vocabulary_terms: vocabulary.length,
+
+  curator_page_text_overrides: totalOverrides,
   warnings: report.warnings.length,
   blocking_errors: report.blocking_errors.length,
 };

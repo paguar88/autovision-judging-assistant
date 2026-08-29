@@ -331,5 +331,157 @@ console.log('\n=== CITATION CHAIN MACHINERY TEST ===\n');
     [true, false, true, true]);
 }
 
+// 11. Citation Repair Slice 3: curator page-text overrides for complex layouts.
+//
+//     PDF extraction reads glyphs in storage order, not reading order. The 458
+//     wheel-options table came out interleaved, welding codes to the wrong rows -
+//     "rimSilver", "RSFD)painted". A unit built from that text can quote a Modis
+//     code beside the wrong wheel while every citation check still passes, because
+//     the page genuinely contains those characters. The override replaces the TEXT
+//     of one page; the delivered page slice stays an unaltered copy of the PDF.
+{
+  const { validatePageTextOverrides, applyPageTextOverrides, overrideFor, sha256 } =
+    await import('../src/services/page-text-overrides.mjs');
+
+  const idx = JSON.parse(readFileSync(path.join(ROOT, 'config/source-index.json'), 'utf8'));
+  const doc458 = idx.documents.find(d => d.document_id === 'ferrari-458-italia-carrozzeria-scaglietti-july-2010');
+  const ov = doc458.page_text_overrides[0];
+  const t = ov.text;
+
+  check('only the 458 July 2010 document carries an override, on physical page 17',
+    [idx.documents.filter(d => 'page_text_overrides' in d).map(d => d.document_id),
+     doc458.page_text_overrides.length, ov.physical_page],
+    [['ferrari-458-italia-carrozzeria-scaglietti-july-2010'], 1, 17]);
+
+  // Each code must sit with its own wheel. Asserting the exact adjacent pair is
+  // what a substring search for the code alone would miss.
+  // Only the TABLE rows put the code on its own line; RMSV and RSFD also appear in
+  // the prose above, so matching the bare code would pick up the wrong neighbour.
+  const lines = t.split('\n').map(l => l.trim());
+  const codeRows = lines
+    .map((l, i) => ({ l, wheel: lines[i - 1] }))
+    .filter(x => /^\(Modis [Cc]ode [A-Z]{4}\)$/.test(x.l));
+  const wheelFor = (code) => codeRows.find(x => x.l.includes(code))?.wheel ?? null;
+
+  check('each Modis code belongs to exactly one wheel, and to no other',
+    [wheelFor('RICS'), wheelFor('RMSV'), wheelFor('RSFD'),
+     codeRows.length, new Set(codeRows.map(x => x.wheel)).size],
+    ['Standard dark chromed rim', 'Silver painted forged rim', 'Diamond finished forged rim', 3, 3]);
+
+  check('the five wheel choices are all present, in order',
+    ['Standard rim', 'Standard dark chromed rim', 'Silver painted forged rim',
+     'Diamond finished forged rim', 'Dark Grey Metallic 780 painted forged rim']
+      .map(w => t.indexOf(w)).every((v, i, a) => v > -1 && (i === 0 || v > a[i - 1])),
+    true);
+
+  check('Dark Grey Metallic 780 is Special equipment with no Modis code',
+    [/Dark Grey Metallic 780 painted forged rim\n\(Special equipment\)/.test(t),
+     /Dark Grey Metallic 780 painted forged rim\n\(Modis/.test(t)],
+    [true, false]);
+
+  check('the source typography is preserved: a curly inch mark, not a straight quote',
+    [t.includes('20\u201d diamond finished forged rim (Modis code RSFD)'),
+     /20"\s*diamond/.test(t)],
+    [true, false]);
+
+  check('the override declares the exact extraction it was verified against',
+    /^[0-9a-f]{64}$/.test(ov.expected_original_text_sha256 || ''), true);
+
+  check('the merged extraction artefacts are gone',
+    [t.includes('rimSilver'), t.includes('RSFD)painted'), /\)\w/.test(t)],
+    [false, false, false]);
+
+  // Validation is blocking, so a malformed override cannot reach ingestion.
+  check('invalid, out-of-range and duplicate overrides are rejected',
+    [validatePageTextOverrides('nope', { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 0, reason: 'r', text: 'x' }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 99, reason: 'r', text: 'x' }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 17, reason: 'r', text: 'x' },
+                                { physical_page: 17, reason: 'r', text: 'y' }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 17, reason: '  ', text: 'x' }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 17, reason: 'r', text: '' }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 17, reason: 'r', text: 'x' }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 17, reason: 'r', text: 'x', expected_original_text_sha256: 'ABC123' }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides([{ physical_page: 17, reason: 'r', text: 'x', expected_original_text_sha256: ov.expected_original_text_sha256.toUpperCase() }], { declaredPageCount: 34 }).length > 0,
+     validatePageTextOverrides(doc458.page_text_overrides, { declaredPageCount: 34 }).length === 0],
+    [true, true, true, true, true, true, true, true, true, true]);
+
+  // Application replaces text AND lines, flags the page, and audits by checksum
+  // only - the report must never become a second copy of the corpus.
+  const pages = [
+    { page_number: 16, text: 'sixteen', lines: ['sixteen'] },
+    { page_number: 17, text: 'garbled rimSilver RSFD)painted', lines: ['garbled rimSilver RSFD)painted'] },
+    { page_number: 18, text: 'eighteen', lines: ['eighteen'] },
+  ];
+  // Drift: the page no longer produces the extraction the transcription was verified
+  // against, so it must be left exactly as extracted.
+  const driftPages = JSON.parse(JSON.stringify(pages));
+  const driftAudit = applyPageTextOverrides(driftPages, doc458.page_text_overrides, doc458.document_id);
+  check('a drifted page is left unmodified and reported with both checksums',
+    [driftAudit[0].drift === true, driftAudit[0].applied,
+     driftPages[1].text, driftPages[1].curator_overridden,
+     driftAudit[0].expected_original_text_sha256 === ov.expected_original_text_sha256,
+     /^[0-9a-f]{64}$/.test(driftAudit[0].actual_original_text_sha256),
+     driftAudit[0].expected_original_text_sha256 === driftAudit[0].actual_original_text_sha256,
+     JSON.stringify(driftAudit[0]).includes('Standard dark chromed rim')],
+    [true, false, 'garbled rimSilver RSFD)painted', undefined, true, true, false, false]);
+
+  // Matching checksum: the override applies.
+  pages[1].text = 'garbled rimSilver RSFD)painted';
+  pages[1].lines = [pages[1].text];
+  const matching = [{ ...doc458.page_text_overrides[0], expected_original_text_sha256: sha256(pages[1].text) }];
+  const audit = applyPageTextOverrides(pages, matching, doc458.document_id);
+  check('the override replaces text and lines on its page only, and flags it',
+    [pages[1].text === t, pages[1].lines.length === t.split('\n').length, pages[1].curator_overridden === true,
+     pages[0].text, pages[2].text, pages[0].curator_overridden, pages[2].curator_overridden],
+    [true, true, true, 'sixteen', 'eighteen', undefined, undefined]);
+
+  check('the audit records provenance by checksum without carrying the transcription',
+    [audit.length, audit[0].physical_page, audit[0].reason === ov.reason,
+     /^[0-9a-f]{64}$/.test(audit[0].original_text_sha256),
+     /^[0-9a-f]{64}$/.test(audit[0].curated_text_sha256),
+     JSON.stringify(audit[0]).includes('Standard dark chromed rim')],
+    [1, 17, true, true, true, false]);
+
+  check('a page with no configured override is left untouched',
+    [overrideFor(16, doc458.page_text_overrides), overrideFor(17, doc458.page_text_overrides)?.physical_page],
+    [null, 17]);
+
+  /* ---- Against the regenerated production build ----
+     The checks above prove the mechanism on fixtures. These prove it landed in the
+     real corpus. They can only run once the 16-document build exists, so when the
+     458 units are absent they are recorded as an explicitly named build-regeneration
+     failure - never skipped silently, never counted as a pass. */
+  const u458p17 = unitOf('ferrari-458-italia-carrozzeria-scaglietti-july-2010:p17');
+  const u458p18 = unitOf('ferrari-458-italia-carrozzeria-scaglietti-july-2010:p18');
+  const report = existsSync(path.join(B, 'ingestion-report.json'))
+    ? JSON.parse(readFileSync(path.join(B, 'ingestion-report.json'), 'utf8')) : null;
+  const audit458 = (report?.page_text_overrides || [])
+    .find(a => a.document_id === 'ferrari-458-italia-carrozzeria-scaglietti-july-2010' && a.physical_page === 17);
+
+  if (!u458p17 || !u458p18) {
+    check('REQUIRES 591-UNIT BUILD REGENERATION: the real 458 page-17 and page-18 units carry the corrected table',
+      `458 units absent from build/ferrari (${units.length} units present); regenerate the 16-document build`,
+      'present');
+  } else {
+    const p17 = u458p17.primary_text || '';
+    const p18 = u458p18.overlap_span || '';
+    check('the real 458 page-17 unit carries the corrected table and no merged artefacts',
+      [p17.includes('Standard dark chromed rim'), p17.includes('(Modis Code RICS)'),
+       p17.includes('rimSilver'), p17.includes('RSFD)painted')],
+      [true, true, false, false]);
+    check('the real 458 page-18 overlap carries the corrected wheel rows and associations',
+      [p18.includes('Silver painted forged rim'), p18.includes('(Modis code RMSV)'),
+       p18.includes('Diamond finished forged rim'), p18.includes('(Modis code RSFD)'),
+       p18.includes('rimSilver'), p18.includes('RSFD)painted')],
+      [true, true, true, true, false, false]);
+    check('the ingestion audit shows page 17 applied with matching expected and actual checksums',
+      [Boolean(audit458), audit458?.applied === true,
+       audit458?.expected_original_text_sha256 === audit458?.actual_original_text_sha256,
+       audit458?.expected_original_text_sha256 === ov.expected_original_text_sha256],
+      [true, true, true, true]);
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

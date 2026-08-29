@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePrintedPageRanges } from '../src/services/printed-pages.mjs';
+import { validatePageTextOverrides } from '../src/services/page-text-overrides.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -85,6 +86,11 @@ for (const d of idx.documents) {
 for (const d of idx.documents) {
   for (const e of validatePrintedPageRanges(d.printed_page_ranges, { declaredPageCount: d.declared_page_count })) {
     B('INVALID_PRINTED_PAGE_RANGE', `${d.document_id}: ${e}`);
+  }
+  // Curator page-text overrides are equally blocking: a malformed override would
+  // either be silently skipped or replace the wrong page's text.
+  for (const e of validatePageTextOverrides(d.page_text_overrides, { declaredPageCount: d.declared_page_count })) {
+    B('INVALID_PAGE_TEXT_OVERRIDE', `${d.document_id}: ${e}`);
   }
 }
 
